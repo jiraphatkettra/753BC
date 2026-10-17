@@ -1,0 +1,55 @@
+/* Hallmark · genre: atmospheric · macrostructure: Bento Grid · theme: Terminal · contrast: pass (40–41) · mobile: pass (34, 49, 50–57) */
+:root {
+  /* Paper band: dark (L < 30%) */
+  --color-paper: oklch(14% 0.006 250);
+  --color-paper-2: oklch(16% 0.008 250);
+  --color-paper-3: oklch(20% 0.010 250);
+  --color-surface-card: #070809;
+
+  /* Ink */
+  --color-ink: oklch(96% 0.005 250);
+  --color-ink-secondary: oklch(75% 0.008 250);
+  --color-muted: oklch(55% 0.010 250);
+
+  /* Accent: Emerald / Phosphor */
+  --color-accent: oklch(72% 0.17 155);
+  --color-accent-ink: oklch(12% 0.02 155);
+  --color-accent-subtle: oklch(72% 0.17 155 / 0.12);
+  --color-accent-border: oklch(72% 0.17 155 / 0.35);
+
+  /* Secondary Accent: Amber / Halloween Orange */
+  --color-accent-orange: oklch(70% 0.19 50);
+  --color-accent-orange-subtle: oklch(70% 0.19 50 / 0.12);
+
+  /* Borders & Rules */
+  --rule-hairline: rgba(255, 255, 255, 0.08);
+  --rule-hairline-strong: rgba(255, 255, 255, 0.15);
+  --rule-hairline-bright: rgba(255, 255, 255, 0.40);
+
+  /* Focus & Interactive */
+  --color-focus: oklch(98% 0 0);
+  --color-focus-ring: rgba(255, 255, 255, 0.9);
+
+  /* Spacing Scale (4pt semantic grid) */
+  --space-3xs: 2px;
+  --space-2xs: 4px;
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+  --space-3xl: 64px;
+
+  /* Animation Timing & Easings */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 150ms;
+  --dur-base: 200ms;
+  --dur-slow: 350ms;
+
+  /* Nav Z-Index Hierarchy */
+  --z-sticky-content: 20;
+  --z-sticky-nav: 50;
+  --z-drawer: 60;
+}

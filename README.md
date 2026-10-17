@@ -1,36 +1,83 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 753BC — Discord Community Platform
 
-## Getting Started
+> Official web platform for the **753BC** Discord Community, featuring Discord OAuth2 authentication, voice activity ranking, community event showcases, and server top-up management.
 
-First, run the development server:
+---
 
+## ⚡ Tech Stack
+
+- **Framework**: [Next.js 15](https://nextjs.org/) (App Router, React 19, TypeScript)
+- **Styling**: Tailwind CSS, Vanilla CSS Design System (`tokens.css`)
+- **Authentication**: [NextAuth.js v5](https://authjs.dev/) (Discord OAuth2)
+- **Database & ORM**: [Prisma ORM](https://www.prisma.io/) with [Supabase PostgreSQL](https://supabase.com/) (Dual connection pooling)
+- **Cloud Storage**: Cloudflare R2 (S3-compatible storage for payment slips and event uploads)
+- **Icons & UI**: Lucide React, Framer-inspired technical micro-animations
+
+---
+
+## 🚀 Getting Started
+
+### 1. Clone the repository
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/jiraphatkettra/753BC.git
+cd 753BC
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Install dependencies
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. Environment Variables
+Copy `.env.example` to `.env` and fill in your credentials:
+```bash
+cp .env.example .env
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Required keys include:
+- `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_BOT_TOKEN`, `DISCORD_GUILD_ID`
+- `DATABASE_URL`, `DIRECT_URL` (Supabase PostgreSQL)
+- `NEXTAUTH_SECRET`, `NEXTAUTH_URL`
+- `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`
 
-## Learn More
+### 4. Setup Prisma Database
+```bash
+npx prisma generate
+npx prisma db push
+```
 
-To learn more about Next.js, take a look at the following resources:
+### 5. Start Development Server
+```bash
+npm run dev
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## 📁 Project Structure
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```text
+├── prisma/               # Prisma schema & database migrations
+├── public/               # Static assets & promotional graphics
+├── src/
+│   ├── app/              # Next.js App Router pages
+│   │   ├── api/          # Route handlers (auth, events, upload, topup)
+│   │   ├── leaderboard/  # Voice ranking leaderboard page
+│   │   ├── login/        # Discord authentication gateway
+│   │   ├── topup/        # QR PromptPay & slip verification
+│   │   ├── globals.css   # Global design system & keyframe animations
+│   │   ├── layout.tsx    # Root layout with InteractiveDotGrid
+│   │   └── page.tsx      # Bento Grid Hero section
+│   ├── components/       # UI & Feature components
+│   │   ├── home/         # HeroHeadline, ScrambleText, EventSlider
+│   │   └── shared/       # Navbar, InteractiveDotGrid, AuthProvider
+│   ├── lib/              # Prisma client, Discord API, S3 Cloudflare client
+│   └── types/            # TypeScript data definitions
+└── tokens.css            # Atmospheric engineering color tokens
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## 🔒 License
+Private repository for 753BC Discord Community.

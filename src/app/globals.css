@@ -1,26 +1,323 @@
+/* Hallmark · genre: atmospheric · macrostructure: Bento Grid · theme: Terminal · contrast: pass (40–41) · mobile: pass (34, 49, 50–57) */
 @import "tailwindcss";
+@import "../../tokens.css";
+
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #000000;
+  --foreground: #f5f5f7;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: 'Google Sans', 'Noto Sans Thai', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html, body, button, input, a, header, nav {
+  font-family: 'Google Sans', 'Noto Sans Thai', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+html {
+  overflow-x: clip;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: #070809;
+  color: #f5f5f7;
+  overflow-x: clip;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
+
+/* Apple-style Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #000000;
+}
+::-webkit-scrollbar-thumb {
+  background: #2a2a2e;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46;
+}
+
+/* ================= Majestic Simultaneous Circuit Trace Assembly ================= */
+@keyframes circuitFromLeft {
+  0% {
+    transform: scaleX(0);
+    opacity: 0;
+    filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.8));
+  }
+  30% {
+    opacity: 1;
+    filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.9));
+  }
+  85% {
+    transform: scaleX(1);
+    opacity: 1;
+    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.2));
+  }
+  100% {
+    transform: scaleX(1);
+    opacity: 1;
+    filter: none;
+  }
+}
+
+@keyframes circuitFromRight {
+  0% {
+    transform: scaleX(0);
+    opacity: 0;
+    filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.8));
+  }
+  30% {
+    opacity: 1;
+    filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.9));
+  }
+  85% {
+    transform: scaleX(1);
+    opacity: 1;
+    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.2));
+  }
+  100% {
+    transform: scaleX(1);
+    opacity: 1;
+    filter: none;
+  }
+}
+
+@keyframes circuitFromTop {
+  0% {
+    transform: scaleY(0);
+    opacity: 0;
+    filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.8));
+  }
+  30% {
+    opacity: 1;
+    filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.9));
+  }
+  85% {
+    transform: scaleY(1);
+    opacity: 1;
+    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.2));
+  }
+  100% {
+    transform: scaleY(1);
+    opacity: 1;
+    filter: none;
+  }
+}
+
+@keyframes circuitFromBottom {
+  0% {
+    transform: scaleY(0);
+    opacity: 0;
+    filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.8));
+  }
+  30% {
+    opacity: 1;
+    filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.9));
+  }
+  85% {
+    transform: scaleY(1);
+    opacity: 1;
+    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.2));
+  }
+  100% {
+    transform: scaleY(1);
+    opacity: 1;
+    filter: none;
+  }
+}
+
+@keyframes heroFadeUp {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes heroFadeScale {
+  0% {
+    opacity: 0;
+    transform: scale(0.93);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes heroFadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* Snappy and Smooth Simultaneous Animation (1.0s) */
+.circuit-left {
+  animation: circuitFromLeft 1.0s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform-origin: left;
+}
+
+.circuit-right {
+  animation: circuitFromRight 1.0s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform-origin: right;
+}
+
+.circuit-top {
+  animation: circuitFromTop 1.0s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform-origin: top;
+}
+
+.circuit-bottom {
+  animation: circuitFromBottom 1.0s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform-origin: bottom;
+}
+
+.anim-fade-up {
+  opacity: 0;
+  animation: heroFadeUp 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.anim-fade-scale {
+  opacity: 0;
+  animation: heroFadeScale 1.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.anim-fade-in {
+  opacity: 0;
+  animation: heroFadeIn 1.0s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ================= Floating Halloween Elements (Natural Physics) ================= */
+@keyframes naturalFloat1 {
+  0% {
+    transform: translate3d(0px, 0px, 0px) rotate(0deg);
+  }
+  20% {
+    transform: translate3d(6px, -14px, 0px) rotate(2.5deg);
+  }
+  45% {
+    transform: translate3d(2px, -24px, 0px) rotate(-1.5deg);
+  }
+  70% {
+    transform: translate3d(-8px, -12px, 0px) rotate(-3.5deg);
+  }
+  85% {
+    transform: translate3d(-4px, -2px, 0px) rotate(-1deg);
+  }
+  100% {
+    transform: translate3d(0px, 0px, 0px) rotate(0deg);
+  }
+}
+
+@keyframes naturalFloat2 {
+  0% {
+    transform: translate3d(0px, 0px, 0px) rotate(0deg);
+  }
+  25% {
+    transform: translate3d(-7px, 12px, 0px) rotate(-3deg);
+  }
+  50% {
+    transform: translate3d(3px, 22px, 0px) rotate(2deg);
+  }
+  75% {
+    transform: translate3d(8px, 8px, 0px) rotate(4deg);
+  }
+  100% {
+    transform: translate3d(0px, 0px, 0px) rotate(0deg);
+  }
+}
+
+@keyframes naturalFloat3 {
+  0% {
+    transform: translate3d(0px, 0px, 0px) rotate(0deg) scale(1);
+  }
+  30% {
+    transform: translate3d(5px, -15px, 0px) rotate(4deg) scale(1.03);
+  }
+  65% {
+    transform: translate3d(-6px, -8px, 0px) rotate(-3deg) scale(0.97);
+  }
+  100% {
+    transform: translate3d(0px, 0px, 0px) rotate(0deg) scale(1);
+  }
+}
+
+.animate-float-slow {
+  animation: naturalFloat1 9s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+}
+
+.animate-float-reverse {
+  animation: naturalFloat2 11s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+}
+
+.animate-float-gentle {
+  animation: naturalFloat3 7.5s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+}
+
+
+
+/* Hallmark Gate 27 · Reduced Motion Fallback */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ================= Data Ticker (Dashboard) ================= */
+@keyframes tickerScroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+/* ================= QR Scan Sweep (Topup) ================= */
+@keyframes scanSweep {
+  0%   { top: 0;    opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+/* ================= CRT Scanline overlay utility ================= */
+.crt-scanlines {
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(255,255,255,0.009) 3px,
+    rgba(255,255,255,0.009) 4px
+  );
+  pointer-events: none;
+}
+
+/* ================= Sharp Terminal Caret Blink (Instant On/Off) ================= */
+@keyframes terminalBlink {
+  0%, 49.9% {
+    opacity: 1;
+  }
+  50%, 100% {
+    opacity: 0;
+  }
+}
+
+.terminal-caret-blink {
+  animation: terminalBlink 0.85s infinite;
+}
+
+
