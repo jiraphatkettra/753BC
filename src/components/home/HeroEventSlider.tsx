@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 const eventSlides = [
@@ -12,6 +13,7 @@ const eventSlides = [
     badge: "WELCOME",
     tag: "COMMUNITY HUB",
     period: "753BC // OFFICIAL",
+    href: "/events",
   },
   {
     id: 2,
@@ -20,6 +22,7 @@ const eventSlides = [
     badge: "EVENT 01",
     tag: "PROMO CAMPAIGN",
     period: "15 - 31 OCT",
+    href: "/events#promo-discord-753bc",
   },
   {
     id: 3,
@@ -28,12 +31,14 @@ const eventSlides = [
     badge: "EVENT 02",
     tag: "TRICK OR TREAT",
     period: "31 OCT // MIDNIGHT",
+    href: "/events#trick-or-treat-candy-to-money",
   },
 ];
 
 export default function HeroEventSlider() {
   const [current, setCurrent] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const touchStartX = useRef<number | null>(null);
 
   // Auto-slide every 8 seconds (slower & calmer, paused on hover)
   useEffect(() => {
@@ -52,11 +57,31 @@ export default function HeroEventSlider() {
     setCurrent((prev) => (prev + 1) % eventSlides.length);
   };
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const touchEndX = e.changedTouches[0].clientX;
+    const diff = touchStartX.current - touchEndX;
+    if (Math.abs(diff) > 40) {
+      if (diff > 0) {
+        handleNext();
+      } else {
+        handlePrev();
+      }
+    }
+    touchStartX.current = null;
+  };
+
   return (
     <div
-      className="relative w-full h-full flex flex-col items-center justify-center p-3 sm:p-5 lg:p-6 select-none overflow-hidden"
+      className="relative w-full h-full flex flex-col items-center justify-center p-3 sm:p-5 lg:p-6 select-none overflow-hidden touch-pan-y"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
     >
       {/* Symmetrical Corner Blueprint Metadata */}
       <div
@@ -88,16 +113,19 @@ export default function HeroEventSlider() {
             }`}
           >
             {/* Relaxed Edge-Fade Mask: Preserves artwork details while smoothly melting the outer border */}
-            <div className="relative w-full h-full flex items-center justify-center [mask-image:radial-gradient(ellipse_at_center,black_60%,black_75%,transparent_96%)] [-webkit-mask-image:radial-gradient(ellipse_at_center,black_60%,black_75%,transparent_96%)]">
+            <Link
+              href={slide.href}
+              className="relative w-full h-full flex items-center justify-center [mask-image:radial-gradient(ellipse_at_center,black_60%,black_75%,transparent_96%)] [-webkit-mask-image:radial-gradient(ellipse_at_center,black_60%,black_75%,transparent_96%)] cursor-pointer group/slide"
+            >
               <Image
                 src={slide.src}
                 alt={slide.alt}
                 fill
                 sizes="(max-width: 1024px) 100vw, 50vw"
                 priority={idx === 0}
-                className="object-contain object-center scale-100"
+                className="object-contain object-center scale-100 group-hover/slide:scale-[1.02] transition-transform duration-300"
               />
-            </div>
+            </Link>
 
             {/* Subtle Edge Overlays to soften perimeter into #070809 without eating into content */}
             <div className="pointer-events-none absolute inset-x-0 top-0 h-5 sm:h-6 bg-gradient-to-b from-[#070809] to-transparent" />
@@ -107,35 +135,35 @@ export default function HeroEventSlider() {
           </div>
         ))}
 
-        {/* Sharp Chevron Controls (Left & Right) */}
+        {/* Sharp Chevron Controls (Left & Right - Touch Friendly) */}
         <button
           onClick={handlePrev}
           aria-label="Previous Slide"
-          className="absolute left-1 sm:left-2 top-1/2 -translate-y-1/2 z-20 w-7 h-7 sm:w-8 sm:h-8 bg-[#070809]/80 hover:bg-white text-white hover:text-black border border-white/[0.15] hover:border-white transition-colors duration-150 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2 flex items-center justify-center cursor-pointer shadow-lg"
+          className="absolute left-1.5 sm:left-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 bg-[#070809]/85 hover:bg-white text-white hover:text-black border border-white/[0.18] hover:border-white transition-colors duration-150 active:scale-95 focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2 flex items-center justify-center cursor-pointer shadow-lg"
         >
-          <ChevronLeft className="w-4 h-4" />
+          <ChevronLeft className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
         </button>
 
         <button
           onClick={handleNext}
           aria-label="Next Slide"
-          className="absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 z-20 w-7 h-7 sm:w-8 sm:h-8 bg-[#070809]/80 hover:bg-white text-white hover:text-black border border-white/[0.15] hover:border-white transition-colors duration-150 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2 flex items-center justify-center cursor-pointer shadow-lg"
+          className="absolute right-1.5 sm:right-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 bg-[#070809]/85 hover:bg-white text-white hover:text-black border border-white/[0.18] hover:border-white transition-colors duration-150 active:scale-95 focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2 flex items-center justify-center cursor-pointer shadow-lg"
         >
-          <ChevronRight className="w-4 h-4" />
+          <ChevronRight className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
         </button>
       </div>
 
-      {/* Sharp Technical Slide Navigation Bar (Compact & Non-overlapping) */}
+      {/* Sharp Technical Slide Navigation Bar (Responsive & Non-overlapping) */}
       <div
-        className="relative z-20 mt-2 sm:mt-2.5 flex items-center justify-between w-full max-w-[500px] px-2 anim-fade-up"
+        className="relative z-20 mt-2 sm:mt-2.5 flex items-center justify-between w-full max-w-[500px] px-1 sm:px-2 anim-fade-up gap-2"
         style={{ animationDelay: "850ms" }}
       >
-        <div className="flex items-center gap-1.5 flex-nowrap">
+        <div className="flex items-center gap-1 sm:gap-1.5 flex-nowrap min-w-0">
           {eventSlides.map((slide, idx) => (
             <button
               key={slide.id}
               onClick={() => setCurrent(idx)}
-              className={`px-2 py-0.5 text-[9px] font-mono border transition-colors duration-150 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2 flex items-center gap-1 whitespace-nowrap cursor-pointer ${
+              className={`px-2 sm:px-2.5 py-1 text-[9px] font-mono border transition-colors duration-150 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2 flex items-center gap-1 whitespace-nowrap cursor-pointer min-h-[28px] ${
                 idx === current
                   ? "bg-white text-black border-white font-semibold shadow-[0_0_12px_rgba(255,255,255,0.15)]"
                   : "bg-white/[0.03] text-neutral-400 border-white/[0.1] hover:text-white hover:bg-white/[0.08]"
@@ -147,8 +175,8 @@ export default function HeroEventSlider() {
                 }`}
               />
               <span>0{idx + 1}</span>
-              <span className="text-neutral-500">//</span>
-              <span>{idx === 0 ? "WELCOME" : idx === 1 ? "PROMO" : "EVENT"}</span>
+              <span className="hidden sm:inline text-neutral-500">//</span>
+              <span className="hidden sm:inline">{idx === 0 ? "WELCOME" : idx === 1 ? "PROMO" : "EVENT"}</span>
             </button>
           ))}
         </div>

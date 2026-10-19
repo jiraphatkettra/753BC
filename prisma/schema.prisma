@@ -47,6 +47,8 @@ model User {
   accounts      Account[]
   sessions      Session[]
   participants  EventParticipant[]
+  topups        Topup[]
+  voiceStats    VoiceStat[]
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
 }
@@ -98,3 +100,66 @@ model EventParticipant {
 
   @@unique([eventId, userId])
 }
+
+// ================= 753BC Topup & Payment =================
+enum TopupStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Topup {
+  id           String      @id @default(cuid())
+  userId       String
+  amount       Float
+  slipUrl      String
+  status       TopupStatus @default(PENDING)
+  rejectReason String?
+  reviewedAt   DateTime?
+  reviewedBy   String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+}
+
+// ================= 753BC Voice Telemetry & Leaderboard =================
+model VoiceStat {
+  id             String    @id @default(cuid())
+  userId         String?
+  discordId      String    @unique
+  username       String
+  displayName    String?
+  avatar         String?
+  role           String?
+  weekMinutes    Int       @default(0)
+  monthMinutes   Int       @default(0)
+  allTimeMinutes Int       @default(0)
+  inVoiceNow     Boolean   @default(false)
+  weeklyDelta    Int       @default(0)
+  lastActiveAt   DateTime  @default(now())
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user           User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([weekMinutes])
+  @@index([monthMinutes])
+  @@index([allTimeMinutes])
+}
+
+// ================= LynnBot Persistent Settings & Embed Configurations =================
+model Setting {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String   @db.Text
+  category    String   @default("general")
+  description String?
+  updatedAt   DateTime @updatedAt
+
+  @@map("settings")
+}
+

@@ -35,6 +35,11 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
+
   // Lock scroll when mobile menu is open
   useEffect(() => {
     if (mobileMenuOpen) {
@@ -49,11 +54,11 @@ export default function Navbar() {
 
   const navLinks: { name: string; href: string; isExternal?: boolean }[] = [
     { name: "หน้าแรก", href: "/" },
-    { name: "กิจกรรม", href: "https://discord.gg/753bc", isExternal: true },
-    { name: "ร้านค้า", href: "https://discord.gg/753bc", isExternal: true },
+    { name: "กิจกรรม", href: "/events" },
+    { name: "ร้านค้า", href: "/shop" },
     { name: "จัดอันดับ", href: "/leaderboard" },
-    { name: "กฎระเบียบ", href: "https://discord.gg/753bc", isExternal: true },
-    { name: "ติดต่อสตาฟ", href: "https://discord.gg/753bc", isExternal: true },
+    { name: "กฎระเบียบ", href: "/rules" },
+    { name: "ติดต่อสตาฟ", href: "/contact" },
   ];
 
   return (
@@ -131,7 +136,7 @@ export default function Navbar() {
             {/* Auth Actions (Sharp Rectangular Style) */}
             <div className="flex items-center gap-2.5">
               <a
-                href="https://discord.gg/753bc"
+                href="https://discord.gg/6zcbZ47b5t"
                 target="_blank"
                 rel="noreferrer"
                 className="hidden xl:inline-flex items-center gap-1 text-[13px] text-neutral-400 hover:text-white transition-colors duration-150 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2 whitespace-nowrap group mr-1"
@@ -208,16 +213,14 @@ export default function Navbar() {
                           <Wallet className="w-3.5 h-3.5 text-emerald-400" />
                           <span>เติมเงิน / กระเป๋าเงิน</span>
                         </Link>
-                        <a
-                          href="https://discord.gg/753bc"
-                          target="_blank"
-                          rel="noreferrer"
+                        <Link
+                          href="/shop"
                           onClick={() => setUserDropdownOpen(false)}
                           className="flex items-center gap-2 px-3 py-1.5 text-xs text-neutral-300 hover:text-white hover:bg-white/[0.05] transition-colors"
                         >
                           <ShoppingBag className="w-3.5 h-3.5 text-neutral-400" />
                           <span>ร้านค้าคอมมูนิตี้</span>
-                        </a>
+                        </Link>
                         <Link
                           href="/leaderboard"
                           onClick={() => setUserDropdownOpen(false)}
@@ -226,6 +229,16 @@ export default function Navbar() {
                           <Trophy className="w-3.5 h-3.5 text-neutral-400" />
                           <span>จัดอันดับของฉัน</span>
                         </Link>
+                        {session.user.isAdmin && (
+                          <Link
+                            href="/admin"
+                            onClick={() => setUserDropdownOpen(false)}
+                            className="flex items-center gap-2 px-3 py-1.5 text-xs text-orange-400 hover:bg-orange-500/10 transition-colors"
+                          >
+                            <Shield className="w-3.5 h-3.5 text-orange-400" />
+                            <span>ศูนย์ควบคุมแอดมิน</span>
+                          </Link>
+                        )}
                       </div>
 
                       <div className="border-t border-white/[0.08] pt-1">
@@ -255,19 +268,20 @@ export default function Navbar() {
           </div>
 
           {/* Mobile & Tablet Right Controls */}
-          <div className="flex lg:hidden items-center gap-2">
+          <div className="flex lg:hidden items-center gap-1.5 sm:gap-2">
             {/* ปุ่มเติมเงินบน Mobile Header */}
             <Link
               href="/topup"
-              className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 active:scale-[0.98] whitespace-nowrap transition-colors duration-150"
+              className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 text-[11px] font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 active:scale-[0.98] whitespace-nowrap transition-colors duration-150 min-h-[34px]"
+              aria-label="เติมเงิน"
             >
-              <Wallet className="w-3 h-3" />
-              <span>เติมเงิน</span>
+              <Wallet className="w-3.5 h-3.5" />
+              <span className="hidden xs:inline">เติมเงิน</span>
             </Link>
             {mounted && status === "authenticated" && session?.user ? (
               <Link
                 href="/login"
-                className="flex items-center gap-1.5 px-2 py-1 bg-[#070809] border border-white/[0.15] active:scale-[0.98] whitespace-nowrap transition-colors duration-150"
+                className="flex items-center gap-1.5 px-2 py-1.5 bg-[#070809] border border-white/[0.15] active:scale-[0.98] whitespace-nowrap transition-colors duration-150 min-h-[34px]"
               >
                 {session.user.image ? (
                   <img
@@ -278,14 +292,14 @@ export default function Navbar() {
                 ) : (
                   <User className="w-3.5 h-3.5 text-white" />
                 )}
-                <span className="text-[11px] text-white max-w-[60px] truncate whitespace-nowrap">
+                <span className="text-[11px] text-white max-w-[55px] sm:max-w-[70px] truncate whitespace-nowrap">
                   {session.user.name}
                 </span>
               </Link>
             ) : (
               <Link
                 href="/login"
-                className="text-[12px] font-medium text-black bg-white px-3 py-1 border border-white active:scale-[0.98] whitespace-nowrap transition-colors duration-150"
+                className="text-[12px] font-medium text-black bg-white px-2.5 sm:px-3 py-1.5 border border-white active:scale-[0.98] whitespace-nowrap transition-colors duration-150 min-h-[34px] flex items-center"
               >
                 เข้าสู่ระบบ
               </Link>
@@ -293,8 +307,8 @@ export default function Navbar() {
 
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-1.5 text-neutral-400 hover:text-white transition-colors border border-white/[0.08] bg-white/[0.02]"
-              aria-label="เปิดเมนู"
+              className="p-1.5 sm:p-2 text-neutral-400 hover:text-white transition-colors border border-white/[0.08] bg-white/[0.02] min-w-[34px] min-h-[34px] flex items-center justify-center cursor-pointer active:scale-95"
+              aria-label={mobileMenuOpen ? "ปิดเมนู" : "เปิดเมนู"}
             >
               {mobileMenuOpen ? (
                 <X className="w-5 h-5 text-white" />
@@ -309,7 +323,7 @@ export default function Navbar() {
       {/* ================= Mobile Drawer (Sharp Theme) ================= */}
       {mobileMenuOpen && (
         <div className="fixed inset-0 top-[64px] z-40 bg-[#070809]/98 backdrop-blur-2xl lg:hidden px-6 pt-6 pb-10 flex flex-col justify-between overflow-y-auto animate-in fade-in duration-150">
-          <nav className="flex flex-col space-y-3">
+          <nav className="flex flex-col space-y-1">
             {navLinks.map((link) =>
               link.isExternal ? (
                 <a
@@ -318,7 +332,7 @@ export default function Navbar() {
                   target="_blank"
                   rel="noreferrer"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="text-[15px] text-neutral-400 hover:text-white transition-colors py-2.5 border-b border-white/[0.06] flex items-center justify-between"
+                  className="text-[15px] text-neutral-300 hover:text-white transition-colors py-3.5 border-b border-white/[0.06] flex items-center justify-between min-h-[44px]"
                 >
                   <span>{link.name}</span>
                   <span className="text-[10px] font-mono text-neutral-600">// EXT</span>
@@ -328,7 +342,11 @@ export default function Navbar() {
                   key={link.name}
                   href={link.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="text-[15px] text-neutral-400 hover:text-white transition-colors py-2.5 border-b border-white/[0.06] flex items-center justify-between"
+                  className={`text-[15px] transition-colors py-3.5 border-b border-white/[0.06] flex items-center justify-between min-h-[44px] ${
+                    pathname === link.href
+                      ? "text-white font-semibold"
+                      : "text-neutral-300 hover:text-white"
+                  }`}
                 >
                   <span>{link.name}</span>
                   <span className="text-[10px] font-mono text-neutral-600">// NAV</span>
@@ -370,7 +388,7 @@ export default function Navbar() {
                     setMobileMenuOpen(false);
                     signOut({ callbackUrl: "/" });
                   }}
-                  className="w-full py-2.5 text-center text-[13px] font-medium text-red-400 bg-red-500/10 border border-red-500/20 flex items-center justify-center gap-2"
+                  className="w-full py-3 text-center text-[13px] font-medium text-red-400 bg-red-500/10 border border-red-500/20 flex items-center justify-center gap-2 min-h-[44px] active:scale-[0.98]"
                 >
                   <LogOut className="w-3.5 h-3.5" />
                   <span>ออกจากระบบ</span>
@@ -380,7 +398,7 @@ export default function Navbar() {
               <Link
                 href="/login"
                 onClick={() => setMobileMenuOpen(false)}
-                className="w-full py-2.5 text-center text-[13px] font-medium text-black bg-white border border-white transition-colors duration-150 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2 whitespace-nowrap shadow-sm"
+                className="w-full py-3 text-center text-[13px] font-medium text-black bg-white border border-white transition-colors duration-150 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2 whitespace-nowrap shadow-sm min-h-[44px] flex items-center justify-center"
               >
                 เข้าสู่ระบบด้วย Discord
               </Link>
@@ -389,17 +407,28 @@ export default function Navbar() {
             <Link
               href="/topup"
               onClick={() => setMobileMenuOpen(false)}
-              className="w-full py-2.5 text-center text-[13px] font-medium text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 transition-colors duration-150 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-emerald-400 focus-visible:outline-offset-2 whitespace-nowrap flex items-center justify-center gap-2"
+              className="w-full py-3 text-center text-[13px] font-medium text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 transition-colors duration-150 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-emerald-400 focus-visible:outline-offset-2 whitespace-nowrap flex items-center justify-center gap-2 min-h-[44px]"
             >
               <Wallet className="w-3.5 h-3.5" />
               <span>เติมเงินกระเป๋าตังค์</span>
             </Link>
 
+            {status === "authenticated" && session?.user?.isAdmin && (
+              <Link
+                href="/admin"
+                onClick={() => setMobileMenuOpen(false)}
+                className="w-full py-3 text-center text-[13px] font-medium text-orange-400 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 transition-colors duration-150 active:scale-[0.98] flex items-center justify-center gap-2 min-h-[44px]"
+              >
+                <Shield className="w-3.5 h-3.5" />
+                <span>ศูนย์ควบคุมแอดมิน</span>
+              </Link>
+            )}
+
             <a
-              href="https://discord.gg/753bc"
+              href="https://discord.gg/6zcbZ47b5t"
               target="_blank"
               rel="noreferrer"
-              className="w-full py-2.5 text-center text-[13px] font-medium text-neutral-300 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.1] transition-colors duration-150 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2 whitespace-nowrap flex items-center justify-center gap-1.5"
+              className="w-full py-3 text-center text-[13px] font-medium text-neutral-300 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.1] transition-colors duration-150 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2 whitespace-nowrap flex items-center justify-center gap-1.5 min-h-[44px]"
             >
               <span>เข้าร่วมดิสคอร์ด</span>
               <ArrowUpRight className="w-3.5 h-3.5 text-neutral-400" />
