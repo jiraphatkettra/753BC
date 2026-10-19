@@ -283,7 +283,7 @@ export default function RuleAssistantWidget({
           onChange={(e) => setInput(e.target.value)}
           placeholder="พิมพ์ข้อสงสัย หรือสถานการณ์จำลอง..."
           disabled={loading}
-          className="flex-1 bg-white/[0.03] border border-white/[0.1] px-3 sm:px-3.5 py-2 sm:py-2.5 text-xs sm:text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-white/40 transition-colors min-h-[40px]"
+          className="flex-1 bg-white/[0.03] border border-white/[0.1] px-3 sm:px-3.5 py-2 sm:py-2.5 text-base sm:text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-white/40 transition-colors min-h-[44px]"
         />
 
         <button
