@@ -4,12 +4,17 @@ import { isDiscordAdmin } from "@/lib/admin";
 import { checkGuildMember, getDiscordAvatarUrl } from "@/lib/discord";
 import { prisma } from "@/lib/prisma";
 
+const isHttps = Boolean(
+  (process.env.AUTH_URL || process.env.NEXTAUTH_URL)?.startsWith("https://")
+);
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   secret:
     process.env.AUTH_SECRET ||
     process.env.NEXTAUTH_SECRET ||
     "build_fallback_secret_753bc_at_least_32_chars_long",
   trustHost: true,
+  useSecureCookies: isHttps,
   session: {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 days
