@@ -263,11 +263,12 @@ class DropEngine {
         ? `${roleTag} ${rendered.content}`
         : `${roleTag} 🎃 **มีลูกอมแคนดี้หล่นลงมาแล้ว! ใครอยู่ในห้องพูดคุยเสียงรีบมากดรับด่วน!** 🍬`;
 
+      // Discord API: roles array and parse:["roles"] are mutually exclusive
+      delete (rendered as any).allowed_mentions;
       const messagePayload: any = {
         ...rendered,
         allowedMentions: {
           roles: [roleId],
-          parse: ["roles"],
         },
       };
 
