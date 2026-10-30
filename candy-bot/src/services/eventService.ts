@@ -53,8 +53,9 @@ class EventService {
 
   async startEvent(actorId: string): Promise<{ success: boolean; message: string }> {
     const event = await prisma.candyEvent.findFirst({
-      where: { status: { in: ["DRAFT", "SCHEDULED", "PAUSED"] } },
+      where: { status: { in: ["DRAFT", "SCHEDULED", "PAUSED", "ENDED"] } },
       include: { channels: true },
+      orderBy: { createdAt: "desc" },
     });
 
     if (!event) {
@@ -70,9 +71,17 @@ class EventService {
       return { success: false, message: "ต้องกำหนดห้องข้อความสำหรับดรอปอย่างน้อย 1 ห้อง" };
     }
 
+    const now = new Date();
+    const effectiveEndsAt = event.endsAt <= now ? new Date(Date.now() + 2 * 3600 * 1000) : event.endsAt;
+    const effectiveStartsAt = event.startsAt > now ? now : event.startsAt;
+
     const updated = await prisma.candyEvent.update({
       where: { id: event.id },
-      data: { status: "RUNNING" },
+      data: {
+        status: "RUNNING",
+        startsAt: effectiveStartsAt,
+        endsAt: effectiveEndsAt,
+      },
       include: { channels: true },
     });
     this.cachedEvent = updated;

@@ -1,9 +1,17 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Play, Pause, Square, AlertTriangle, CheckCircle2, Save } from "lucide-react";
+import { Play, Pause, Square, AlertTriangle, CheckCircle2, Save, Sparkles } from "lucide-react";
 import Button from "@/components/ui/Button";
+
+function toLocalDatetimeInput(dateStr?: string | Date): string {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "";
+  const tzOffset = d.getTimezoneOffset() * 60000;
+  return new Date(d.getTime() - tzOffset).toISOString().slice(0, 16);
+}
 
 export default function AdminEventPage() {
   const queryClient = useQueryClient();
@@ -22,17 +30,36 @@ export default function AdminEventPage() {
   const config = event?.config || {};
 
   const [formData, setFormData] = useState<any>({
-    name: event?.name || "Trick or Treat 2026",
-    budgetTotal: event?.budgetTotal || 1000,
-    startsAt: event?.startsAt ? new Date(event.startsAt).toISOString().slice(0, 16) : "2026-10-30T23:30",
-    endsAt: event?.endsAt ? new Date(event.endsAt).toISOString().slice(0, 16) : "2026-10-31T00:30",
-    requireVoice: config.claim?.requireVoice ?? true,
-    minVoiceSeconds: config.claim?.minVoiceSeconds ?? 10,
-    excludeAfkChannel: config.claim?.excludeAfkChannel ?? true,
-    perUserMaxTotal: config.claim?.perUserMaxTotal || "",
-    lifetimeSec: config.drop?.lifetimeSec ?? 45,
-    maxClaimers: config.drop?.maxClaimers ?? 1,
+    name: "Trick or Treat 2026",
+    budgetTotal: 1000,
+    startsAt: "2026-10-30T23:30",
+    endsAt: "2026-10-31T00:30",
+    requireVoice: true,
+    minVoiceSeconds: 10,
+    excludeAfkChannel: true,
+    perUserMaxTotal: "",
+    lifetimeSec: 45,
+    maxClaimers: 1,
   });
+
+  // Sync formData with loaded event from DB
+  useEffect(() => {
+    if (event) {
+      const cfg = event.config || {};
+      setFormData({
+        name: event.name || "Trick or Treat 2026",
+        budgetTotal: event.budgetTotal ?? 1000,
+        startsAt: toLocalDatetimeInput(event.startsAt) || "2026-10-30T23:30",
+        endsAt: toLocalDatetimeInput(event.endsAt) || "2026-10-31T00:30",
+        requireVoice: cfg.claim?.requireVoice ?? true,
+        minVoiceSeconds: cfg.claim?.minVoiceSeconds ?? 10,
+        excludeAfkChannel: cfg.claim?.excludeAfkChannel ?? true,
+        perUserMaxTotal: cfg.claim?.perUserMaxTotal ?? "",
+        lifetimeSec: cfg.drop?.lifetimeSec ?? 45,
+        maxClaimers: cfg.drop?.maxClaimers ?? 1,
+      });
+    }
+  }, [event]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -50,6 +77,7 @@ export default function AdminEventPage() {
               ...config.drop,
               lifetimeSec: parseInt(formData.lifetimeSec, 10),
               maxClaimers: parseInt(formData.maxClaimers, 10),
+              dropWhenNoActivity: true, // Allow drops in quiet rooms/testing
             },
             claim: {
               ...config.claim,
@@ -81,31 +109,77 @@ export default function AdminEventPage() {
       if (!res.ok) throw new Error("Command failed");
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["candy-admin-event"] });
-      setNotification("คำสั่งถูกส่งไปยังคิวของบอทเรียบร้อยแล้ว");
-      setTimeout(() => setNotification(null), 3000);
+      const msg =
+        variables === "EVENT_START"
+          ? "🚀 เริ่มต้นกิจกรรมเรียบร้อยแล้ว! บอทจะเริ่มสุ่มดรอปลูกอมลงห้องที่เลือกทันที"
+          : "คำสั่งถูกส่งไปยังคิวของบอทเรียบร้อยแล้ว";
+      setNotification(msg);
+      setTimeout(() => setNotification(null), 4000);
     },
   });
 
+  // Quick manual drop test
+  const manualDropMutation = useMutation({
+    mutationFn: async () => {
+      const enabledChannels = (event?.channels || []).filter((c: any) => c.enabled);
+      if (enabledChannels.length === 0) {
+        throw new Error("กรุณาเปิดใช้งานห้องสำหรับดรอปอย่างน้อย 1 ห้องก่อนที่เมนู 'ห้องที่เปิดดรอป'");
+      }
+      const ch = enabledChannels[0];
+      const res = await fetch("/api/admin/candy/event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "DROP_NOW",
+          payload: {
+            channelId: ch.channelId,
+            amount: 1,
+            maxClaimers: 1,
+          },
+        }),
+      });
+      if (!res.ok) throw new Error("Drop failed");
+      return res.json();
+    },
+    onSuccess: () => {
+      setNotification("🍬 สั่งบอทดรอปลูกอมทดสอบ 1 ลูกแล้ว! (แท็กยศเรียบร้อย)");
+      setTimeout(() => setNotification(null), 4000);
+    },
+    onError: (err: any) => {
+      alert(err.message);
+    },
+  });
+
+  const enabledChannelsCount = (event?.channels || []).filter((c: any) => c.enabled).length;
+
   const preflightChecks = [
     { label: "งบประมาณรวม > 0", pass: (event?.budgetTotal || formData.budgetTotal) > 0 },
-    { label: "มีห้องข้อความสำหรับดรอปอย่างน้อย 1 ห้อง", pass: (event?.channels || []).filter((c: any) => c.enabled).length > 0 },
+    { label: `มีห้องข้อความสำหรับดรอป (${enabledChannelsCount} ห้อง)`, pass: enabledChannelsCount > 0 },
     { label: "ระบบตรวจจับห้องเสียงเปิดใช้งาน", pass: Boolean(formData.requireVoice) },
   ];
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">ตั้งค่า & ควบคุมกิจกรรม</h1>
           <p className="text-xs text-neutral-400 mt-1">กำหนดงบประมาณ เงื่อนไขห้องเสียง และควบคุมการเริ่ม/หยุดกิจกรรม</p>
         </div>
 
         {/* Controls */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {event?.status === "RUNNING" ? (
             <>
+              <Button
+                variant="secondary"
+                onClick={() => manualDropMutation.mutate()}
+                isLoading={manualDropMutation.isPending}
+                icon={<Sparkles className="w-4 h-4 text-orange-400" />}
+              >
+                ดรอปทดสอบ 1 ลูก
+              </Button>
               <Button
                 variant="secondary"
                 onClick={() => commandMutation.mutate("EVENT_PAUSE")}

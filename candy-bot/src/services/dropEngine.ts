@@ -57,14 +57,15 @@ class DropEngine {
         lambda = dropCfg.fixedDropsPerMinute / 60;
       }
 
-      const pDrop = Math.min(1, lambda * dropCfg.tickSeconds);
-      if (Math.random() > pDrop) return;
-
       // 2. Check global active drops
       const globalActive = await prisma.candyDrop.count({
         where: { eventId: event.id, status: "ACTIVE" },
       });
       if (globalActive >= dropCfg.maxActiveGlobal) return;
+
+      // If no drop currently active in guild, drop immediately; otherwise follow pacing roll
+      const hasActiveDrops = globalActive > 0;
+      if (hasActiveDrops && Math.random() > pDrop) return;
 
       // 3. Find eligible candidate channels
       const enabledChannels = (event.channels || []).filter((c: any) => c.enabled);
@@ -81,7 +82,9 @@ class DropEngine {
         if (channelActive >= dropCfg.maxActivePerChannel) continue;
 
         const activity = activityTracker.getActivity(ch.channelId, dropCfg.activityWindowSec);
-        if (activity < dropCfg.minActivityMessages && !dropCfg.dropWhenNoActivity) continue;
+        // Default allow quiet room drops for testing/active community participation
+        const allowQuiet = dropCfg.dropWhenNoActivity !== false;
+        if (activity < dropCfg.minActivityMessages && !allowQuiet) continue;
 
         const effectiveWeight = ch.weight * (1 + activity);
         candidates.push({ channel: ch, weight: effectiveWeight });
@@ -253,7 +256,22 @@ class DropEngine {
         { dropId: drop.id }
       );
 
-      const sent = await channel.send(rendered);
+      // TAG TARGET ROLE: 1562901234963456121
+      const roleId = "1562901234963456121";
+      const roleTag = `<@&${roleId}>`;
+      rendered.content = rendered.content
+        ? `${roleTag} ${rendered.content}`
+        : `${roleTag} 🎃 **มีลูกอมแคนดี้หล่นลงมาแล้ว! ใครอยู่ในห้องพูดคุยเสียงรีบมากดรับด่วน!** 🍬`;
+
+      const messagePayload: any = {
+        ...rendered,
+        allowedMentions: {
+          roles: [roleId],
+          parse: ["roles"],
+        },
+      };
+
+      const sent = await channel.send(messagePayload);
 
       await prisma.candyDrop.update({
         where: { id: drop.id },

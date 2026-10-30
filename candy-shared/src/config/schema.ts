@@ -23,7 +23,7 @@ export const EventDropConfigSchema = z.object({
   ]),
   pacing: z.enum(["BUDGET_AWARE", "FIXED_RATE"]).default("BUDGET_AWARE"),
   fixedDropsPerMinute: z.number().min(0.1).default(4),
-  dropWhenNoActivity: z.boolean().default(false),
+  dropWhenNoActivity: z.boolean().default(true),
 });
 
 export const EventClaimConfigSchema = z.object({
