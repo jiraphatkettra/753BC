@@ -41,89 +41,113 @@ class DropEngine {
       if (remainingBudget <= 0) return;
 
       const now = Date.now();
-      const endsAtMs = new Date(event.endsAt).getTime();
-      const remainingSec = Math.max(1, Math.floor((endsAtMs - now) / 1000));
-      if (remainingSec <= 0) return;
 
-      // 1. Calculate Pacing lambda (drops / sec)
-      let lambda = 0;
-      if (dropCfg.pacing === "BUDGET_AWARE") {
-        const totalWeight = dropCfg.amountTiers.reduce((acc, t) => acc + t.weight, 0);
-        const weightedSum = dropCfg.amountTiers.reduce((acc, t) => acc + t.amount * t.weight, 0);
-        const avgAmount = totalWeight > 0 ? weightedSum / totalWeight : 1;
-        const avgCost = avgAmount * dropCfg.maxClaimers;
-        lambda = (remainingBudget / remainingSec) / Math.max(1, avgCost);
-      } else {
-        lambda = dropCfg.fixedDropsPerMinute / 60;
-      }
-
-      const pDrop = Math.min(1, lambda * dropCfg.tickSeconds);
-
-      // 2. Check global active drops
-      const globalActive = await prisma.candyDrop.count({
-        where: { eventId: event.id, status: "ACTIVE" },
+      // Read Upcoming Drop Queue from DB
+      const queueSetting = await prisma.candySetting.findUnique({
+        where: { key: "candy:upcoming_drop_queue" },
       });
-      if (globalActive >= dropCfg.maxActiveGlobal) return;
+      let queue: any[] = (queueSetting?.value as any[]) || [];
 
-      // If no drop currently active in guild, drop immediately; otherwise follow pacing roll
-      const hasActiveDrops = globalActive > 0;
-      if (hasActiveDrops && Math.random() > pDrop) return;
+      // Clean up stale unexecuted items older than 20 seconds
+      queue = queue.filter((item) => item.scheduledAt > now - 20000);
 
-      // 3. Find eligible candidate channels
-      const enabledChannels = (event.channels || []).filter((c: any) => c.enabled);
-      if (enabledChannels.length === 0) return;
+      // 1. Check if any queued drop is due now
+      const dueIndex = queue.findIndex((item) => item.scheduledAt <= now);
+      if (dueIndex !== -1) {
+        const dueItem = queue[dueIndex];
+        queue.splice(dueIndex, 1);
 
-      const candidates: any[] = [];
-      for (const ch of enabledChannels) {
-        const lastDrop = this.lastChannelDropTime.get(ch.channelId) || 0;
-        if (now - lastDrop < dropCfg.channelCooldownSec * 1000) continue;
-
-        const channelActive = await prisma.candyDrop.count({
-          where: { channelId: ch.channelId, status: "ACTIVE" },
+        // Update queue in DB immediately so it is not double-executed
+        await prisma.candySetting.upsert({
+          where: { key: "candy:upcoming_drop_queue" },
+          create: { key: "candy:upcoming_drop_queue", value: queue },
+          update: { value: queue },
         });
-        if (channelActive >= dropCfg.maxActivePerChannel) continue;
 
-        const activity = activityTracker.getActivity(ch.channelId, dropCfg.activityWindowSec);
-        // Default allow quiet room drops for testing/active community participation
-        const allowQuiet = dropCfg.dropWhenNoActivity !== false;
-        if (activity < dropCfg.minActivityMessages && !allowQuiet) continue;
-
-        const effectiveWeight = ch.weight * (1 + activity);
-        candidates.push({ channel: ch, weight: effectiveWeight });
-      }
-
-      if (candidates.length === 0) return;
-
-      // Weighted random pick of channel
-      const sumWeight = candidates.reduce((acc, c) => acc + c.weight, 0);
-      let rand = Math.random() * sumWeight;
-      let selectedChannel = candidates[0].channel;
-      for (const cand of candidates) {
-        rand -= cand.weight;
-        if (rand <= 0) {
-          selectedChannel = cand.channel;
-          break;
+        // Cap amount by remaining budget
+        const maxPossible = Math.floor(remainingBudget / dueItem.maxClaimers);
+        if (maxPossible > 0) {
+          const dropAmount = Math.min(dueItem.amount, maxPossible);
+          console.log(`[DropEngine] Executing queued drop: ${dropAmount} candies to channel ${dueItem.channelId}`);
+          await this.executeDrop(
+            event.id,
+            dueItem.channelId,
+            dropAmount,
+            dueItem.maxClaimers,
+            dropCfg.lifetimeSec,
+            "SCHEDULER"
+          );
         }
       }
 
-      // Pick amount from tiers
-      const sumTierWeight = dropCfg.amountTiers.reduce((acc, t) => acc + t.weight, 0);
-      let randTier = Math.random() * sumTierWeight;
-      let selectedAmount = dropCfg.amountTiers[0].amount;
-      for (const tier of dropCfg.amountTiers) {
-        randTier -= tier.weight;
-        if (randTier <= 0) {
-          selectedAmount = tier.amount;
-          break;
+      // 2. Ensure queue has at least 3 upcoming drops planned
+      let enabledChannels = (event.channels || []).filter((c: any) => c.enabled);
+      if (enabledChannels.length === 0) {
+        const masterSetting = await prisma.candySetting.findUnique({
+          where: { key: "candy:saved_enabled_channels" },
+        });
+        if (masterSetting && Array.isArray(masterSetting.value)) {
+          enabledChannels = masterSetting.value as any[];
         }
       }
 
-      // Cap selectedAmount by remaining budget
-      const maxPossible = Math.floor(remainingBudget / dropCfg.maxClaimers);
-      if (maxPossible <= 0) return;
-      selectedAmount = Math.min(selectedAmount, maxPossible);
+      if (enabledChannels.length > 0 && queue.length < 3) {
+        const intervalSec = Math.max(30, Math.floor(60 / (dropCfg.fixedDropsPerMinute || 2)));
+        let lastTime = queue.length > 0 ? queue[queue.length - 1].scheduledAt : now;
 
-      await this.executeDrop(event.id, selectedChannel.channelId, selectedAmount, dropCfg.maxClaimers, dropCfg.lifetimeSec, "SCHEDULER");
+        while (queue.length < 3) {
+          lastTime += (intervalSec + Math.floor(Math.random() * 10 - 5)) * 1000;
+          if (lastTime < now + 12000) lastTime = now + 12000;
+
+          // Pick candidate channel (weighted)
+          const sumWeight = enabledChannels.reduce((acc: number, c: any) => acc + (c.weight || 1), 0);
+          let randCh = Math.random() * sumWeight;
+          let selectedChannel = enabledChannels[0];
+          for (const ch of enabledChannels) {
+            randCh -= (ch.weight || 1);
+            if (randCh <= 0) {
+              selectedChannel = ch;
+              break;
+            }
+          }
+
+          // Pick amount from tiers
+          const amountTiers = dropCfg.amountTiers || [
+            { amount: 1, weight: 60 },
+            { amount: 2, weight: 25 },
+            { amount: 5, weight: 10 },
+          ];
+          const sumTierWeight = amountTiers.reduce((acc: number, t: any) => acc + (t.weight || 1), 0);
+          let randTier = Math.random() * sumTierWeight;
+          let selectedAmount = amountTiers[0].amount;
+          for (const tier of amountTiers) {
+            randTier -= (tier.weight || 1);
+            if (randTier <= 0) {
+              selectedAmount = tier.amount;
+              break;
+            }
+          }
+
+          queue.push({
+            id: `queue_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+            eventId: event.id,
+            channelId: selectedChannel.channelId,
+            channelName: selectedChannel.name || selectedChannel.channelId,
+            amount: selectedAmount,
+            maxClaimers: dropCfg.maxClaimers || 1,
+            scheduledAt: lastTime,
+            createdAt: now,
+          });
+        }
+
+        queue.sort((a, b) => a.scheduledAt - b.scheduledAt);
+
+        await prisma.candySetting.upsert({
+          where: { key: "candy:upcoming_drop_queue" },
+          create: { key: "candy:upcoming_drop_queue", value: queue },
+          update: { value: queue },
+        });
+      }
     } catch (err) {
       console.error("[DropEngine] tick error:", err);
     }

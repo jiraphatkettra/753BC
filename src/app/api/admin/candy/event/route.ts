@@ -10,14 +10,23 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    // 1. Look for active or running/paused/scheduled event first
+    // 1. Fetch master saved settings as permanent defaults
+    const masterConfigSetting = await prisma.candySetting.findUnique({
+      where: { key: "candy:saved_master_config" },
+    });
+    const masterChannelsSetting = await prisma.candySetting.findUnique({
+      where: { key: "candy:saved_enabled_channels" },
+    });
+    const savedMasterChannels = (masterChannelsSetting?.value as any[]) || [];
+
+    // 2. Look for active or running/paused/scheduled event first
     let event = await prisma.candyEvent.findFirst({
       where: { status: { in: ["RUNNING", "PAUSED", "SCHEDULED", "DRAFT"] } },
       include: { channels: true },
       orderBy: { createdAt: "desc" },
     });
 
-    // 2. If all existing events are ENDED, return the latest one
+    // 3. If all existing events are ENDED, return the latest one
     if (!event) {
       event = await prisma.candyEvent.findFirst({
         include: { channels: true },
@@ -25,19 +34,54 @@ export async function GET() {
       });
     }
 
-    // 3. Fetch master saved settings as permanent defaults
-    const masterConfigSetting = await prisma.candySetting.findUnique({
-      where: { key: "candy:saved_master_config" },
-    });
-    const masterChannelsSetting = await prisma.candySetting.findUnique({
-      where: { key: "candy:saved_enabled_channels" },
-    });
+    // 4. If no event exists at all, create a default DRAFT event
+    if (!event) {
+      const savedConfig = (masterConfigSetting?.value as any)?.config || DEFAULT_EVENT_CONFIG;
+      const savedBudget = (masterConfigSetting?.value as any)?.budgetTotal || 1000;
+      const savedName = (masterConfigSetting?.value as any)?.name || "Trick or Treat 2026";
+
+      event = await prisma.candyEvent.create({
+        data: {
+          name: savedName,
+          status: "DRAFT",
+          startsAt: new Date(),
+          endsAt: new Date(Date.now() + 24 * 3600 * 1000),
+          budgetTotal: savedBudget,
+          config: savedConfig as any,
+          createdBy: "admin",
+        },
+        include: { channels: true },
+      });
+    }
+
+    // 5. Ensure master channels are linked to the active event if it currently has no enabled channels
+    const enabledEventChannels = (event.channels || []).filter((c) => c.enabled);
+    if (enabledEventChannels.length === 0 && savedMasterChannels.length > 0) {
+      for (const mc of savedMasterChannels) {
+        await prisma.candyChannel.upsert({
+          where: { eventId_channelId: { eventId: event.id, channelId: mc.channelId } },
+          create: {
+            eventId: event.id,
+            channelId: mc.channelId,
+            name: mc.name || mc.channelId,
+            enabled: true,
+            weight: mc.weight || 1,
+          },
+          update: { enabled: true },
+        });
+      }
+      // Re-fetch event with populated channels
+      event = await prisma.candyEvent.findUnique({
+        where: { id: event.id },
+        include: { channels: true },
+      });
+    }
 
     return NextResponse.json({
       success: true,
       event,
       masterConfig: masterConfigSetting?.value || null,
-      masterChannels: masterChannelsSetting?.value || [],
+      masterChannels: savedMasterChannels,
     });
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
@@ -282,17 +326,27 @@ export async function POST(req: NextRequest) {
     // -------------------------------------------------------------
     // General Commands (EVENT_START, EVENT_PAUSE, etc.)
     // -------------------------------------------------------------
-    if (type === "EVENT_START") {
-      const latest = await prisma.candyEvent.findFirst({ orderBy: { createdAt: "desc" } });
-      if (latest && (latest.status === "ENDED" || latest.endsAt <= new Date())) {
-        await prisma.candyEvent.update({
-          where: { id: latest.id },
-          data: {
-            status: "DRAFT",
-            endsAt: new Date(Date.now() + 4 * 3600 * 1000), // extend 4 hours
-          },
-        });
-      }
+    const latest = await prisma.candyEvent.findFirst({ orderBy: { createdAt: "desc" } });
+
+    if (type === "EVENT_START" && latest) {
+      await prisma.candyEvent.update({
+        where: { id: latest.id },
+        data: {
+          status: "RUNNING",
+          startsAt: new Date(),
+          endsAt: latest.endsAt <= new Date() ? new Date(Date.now() + 24 * 3600 * 1000) : latest.endsAt,
+        },
+      });
+    } else if (type === "EVENT_PAUSE" && latest) {
+      await prisma.candyEvent.update({
+        where: { id: latest.id },
+        data: { status: "PAUSED" },
+      });
+    } else if (type === "EVENT_STOP" && latest) {
+      await prisma.candyEvent.update({
+        where: { id: latest.id },
+        data: { status: "ENDED" },
+      });
     }
 
     const command = await prisma.candyCommand.create({
