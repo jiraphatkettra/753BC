@@ -57,6 +57,8 @@ class DropEngine {
         lambda = dropCfg.fixedDropsPerMinute / 60;
       }
 
+      const pDrop = Math.min(1, lambda * dropCfg.tickSeconds);
+
       // 2. Check global active drops
       const globalActive = await prisma.candyDrop.count({
         where: { eventId: event.id, status: "ACTIVE" },
