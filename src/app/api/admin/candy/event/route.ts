@@ -114,7 +114,14 @@ export async function PUT(req: NextRequest) {
     });
 
     const parsedStartsAt = startsAt ? new Date(startsAt) : new Date();
-    const parsedEndsAt = endsAt ? new Date(endsAt) : new Date(Date.now() + 3600000);
+    let parsedEndsAt = endsAt ? new Date(endsAt) : new Date(Date.now() + 3600000);
+
+    // If endsAt is before or equal to startsAt, auto-adjust endsAt to startsAt + 2 hours
+    if (parsedEndsAt <= parsedStartsAt) {
+      parsedEndsAt = new Date(parsedStartsAt.getTime() + 2 * 3600 * 1000);
+    }
+
+    const now = new Date();
 
     // Save master config permanently into CandySetting so future events never lose them
     await prisma.candySetting.upsert({
@@ -137,10 +144,14 @@ export async function PUT(req: NextRequest) {
     });
 
     if (event) {
-      // If the event was previously ENDED, but new endsAt is in the future, revive it back to DRAFT/SCHEDULED
+      // Determine target status based on scheduled time
       let targetStatus = event.status;
-      if (event.status === "ENDED" && parsedEndsAt > new Date()) {
-        targetStatus = parsedStartsAt > new Date() ? "SCHEDULED" : "DRAFT";
+      if (parsedStartsAt > now) {
+        targetStatus = "SCHEDULED";
+      } else if (parsedEndsAt <= now) {
+        targetStatus = "ENDED";
+      } else if (event.status === "ENDED" || event.status === "DRAFT") {
+        targetStatus = "DRAFT";
       }
 
       event = await prisma.candyEvent.update({
@@ -340,12 +351,16 @@ export async function POST(req: NextRequest) {
     const latest = await prisma.candyEvent.findFirst({ orderBy: { createdAt: "desc" } });
 
     if (type === "EVENT_START" && latest) {
+      const now = new Date();
+      const forceNow = Boolean(payload?.forceNow);
+      const isFuture = latest.startsAt > now && !forceNow;
+
       await prisma.candyEvent.update({
         where: { id: latest.id },
         data: {
-          status: "RUNNING",
-          startsAt: new Date(),
-          endsAt: latest.endsAt <= new Date() ? new Date(Date.now() + 24 * 3600 * 1000) : latest.endsAt,
+          status: isFuture ? "SCHEDULED" : "RUNNING",
+          startsAt: forceNow ? now : latest.startsAt,
+          endsAt: latest.endsAt <= now ? new Date(now.getTime() + 24 * 3600 * 1000) : latest.endsAt,
         },
       });
     } else if (type === "EVENT_PAUSE" && latest) {

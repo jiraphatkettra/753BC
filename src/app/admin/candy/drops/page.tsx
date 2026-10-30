@@ -97,6 +97,8 @@ export default function AdminDropsPage() {
 
   const queue: QueuedItem[] = queueData?.queue || [];
   const eventStatus: string = queueData?.eventStatus || "NO_EVENT";
+  const startsAt: string | null = queueData?.startsAt || null;
+  const isStarted: boolean = queueData?.isStarted ?? true;
   const drops: any[] = dropsData?.drops || [];
   const enabledChannels = (channelsData?.channels || []).filter((c: any) => c.enabled);
 
@@ -302,18 +304,35 @@ export default function AdminDropsPage() {
         {/* Queue Items Grid */}
         {queue.length === 0 ? (
           <div className="p-8 border border-dashed border-white/10 rounded-xl text-center space-y-2 bg-neutral-900/30">
-            <div className="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center mx-auto text-neutral-500">
+            <div className="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center mx-auto text-neutral-400">
               <Clock className="w-5 h-5" />
             </div>
-            <p className="text-sm font-semibold text-neutral-300">
-              {eventStatus === "RUNNING"
-                ? "กำลังจัดเตรียมคิวดรอปรอบถัดไป..."
-                : "กิจกรรมไม่ได้อยู่ในสถานะ RUNNING (เริ่มกิจกรรมเพื่อเปิดระบบคิวดรอป)"}
-            </p>
-            <p className="text-xs text-neutral-500 max-w-md mx-auto">
-              เมื่อกิจกรรมทำงาน ระบบจะสุ่มห้องและจำนวนลูกอมมารอไว้ในคิวนี้โดยอัตโนมัติ
-              คุณยังสามารถกดปุ่ม "ตั้งเวลาคิวเอง" เพื่อเพิ่มคิวดรอปแบบกำหนดเองได้
-            </p>
+            {eventStatus === "SCHEDULED" || (!isStarted && startsAt) ? (
+              <div className="space-y-1">
+                <p className="text-sm font-bold text-amber-300">
+                  ⏳ กิจกรรมตั้งเวลาเริ่มไว้ที่ {new Date(startsAt!).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })} น.
+                </p>
+                <p className="text-xs text-neutral-400 max-w-md mx-auto">
+                  ระบบจะเริ่มสร้างคิวและสุ่มดรอปลูกอมลงห้อง Discord โดยอัตโนมัติเมื่อถึงเวลา 23:30 น. (บอทจะไม่ดรอปก่อนเวลา)
+                </p>
+              </div>
+            ) : eventStatus === "RUNNING" ? (
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-emerald-300">กำลังจัดเตรียมคิวดรอปรอบถัดไป...</p>
+                <p className="text-xs text-neutral-500 max-w-md mx-auto">
+                  เมื่อกิจกรรมทำงาน ระบบจะสุ่มห้องและจำนวนลูกอมมารอไว้ในคิวนี้โดยอัตโนมัติ
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-neutral-300">
+                  กิจกรรมอยู่ในสถานะ {eventStatus} (ไม่มีคิวดรอปค้างอยู่)
+                </p>
+                <p className="text-xs text-neutral-500 max-w-md mx-auto">
+                  ตั้งเวลาเริ่มหรือกดเริ่มกิจกรรมที่หน้า "ตั้งค่ากิจกรรม" เพื่อเปิดระบบคิวดรอป
+                </p>
+              </div>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

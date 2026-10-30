@@ -22,17 +22,34 @@ export interface QueuedDropItem {
 
 // Helper to pre-fill queue if empty and event is running
 async function ensureQueueFilled(event: any): Promise<QueuedDropItem[]> {
+  const now = Date.now();
+  const startsAtMs = event?.startsAt ? new Date(event.startsAt).getTime() : 0;
+  const endsAtMs = event?.endsAt ? new Date(event.endsAt).getTime() : 0;
+  const isStarted = startsAtMs > 0 ? now >= startsAtMs : false;
+  const isExpired = endsAtMs > 0 ? now >= endsAtMs : false;
+  const isRunning = event && event.status === "RUNNING" && isStarted && !isExpired;
+
+  // If event is ENDED, expired, or NOT yet started, CLEAR the active queue
+  if (!event || event.status === "ENDED" || isExpired || !isRunning) {
+    await prisma.candySetting.upsert({
+      where: { key: "candy:upcoming_drop_queue" },
+      create: { key: "candy:upcoming_drop_queue", value: [] },
+      update: { value: [] },
+    });
+    return [];
+  }
+
   const setting = await prisma.candySetting.findUnique({
     where: { key: "candy:upcoming_drop_queue" },
   });
 
   let queue: QueuedDropItem[] = (setting?.value as unknown as QueuedDropItem[]) || [];
-  const now = Date.now();
 
   // Remove items scheduled more than 15 seconds ago that weren't executed
   queue = queue.filter((item) => item.scheduledAt > now - 15000);
 
-  if (event && event.status === "RUNNING") {
+  // Only generate new upcoming drops if the event is ACTUALLY RUNNING and within the time window
+  if (isRunning) {
     let enabledChannels = (event.channels || []).filter((c: any) => c.enabled);
     if (enabledChannels.length === 0) {
       const masterSetting = await prisma.candySetting.findUnique({
@@ -54,7 +71,7 @@ async function ensureQueueFilled(event: any): Promise<QueuedDropItem[]> {
 
       // Calculate spacing
       const intervalSec = Math.max(30, Math.floor(60 / (dropCfg.fixedDropsPerMinute || 2)));
-      let lastTime = queue.length > 0 ? queue[queue.length - 1].scheduledAt : now;
+      let lastTime = queue.length > 0 ? queue[queue.length - 1].scheduledAt : Math.max(now, startsAtMs);
 
       while (queue.length < 3) {
         lastTime += (intervalSec + Math.floor(Math.random() * 15 - 5)) * 1000;
@@ -112,7 +129,7 @@ async function ensureQueueFilled(event: any): Promise<QueuedDropItem[]> {
 export async function GET() {
   try {
     const event = await prisma.candyEvent.findFirst({
-      where: { status: { in: ["RUNNING", "DRAFT", "SCHEDULED", "PAUSED"] } },
+      where: { status: { in: ["RUNNING", "DRAFT", "SCHEDULED", "PAUSED", "ENDED"] } },
       include: { channels: true },
       orderBy: { createdAt: "desc" },
     });
@@ -125,11 +142,17 @@ export async function GET() {
       secondsRemaining: Math.max(0, Math.ceil((item.scheduledAt - now) / 1000)),
     }));
 
+    const startsAtMs = event?.startsAt ? new Date(event.startsAt).getTime() : 0;
+    const isStarted = startsAtMs > 0 ? now >= startsAtMs : false;
+
     return NextResponse.json(
       {
         success: true,
         queue: enhancedQueue,
         eventStatus: event?.status || "NO_EVENT",
+        startsAt: event?.startsAt || null,
+        endsAt: event?.endsAt || null,
+        isStarted,
         now,
       },
       {

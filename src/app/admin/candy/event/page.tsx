@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Play, Pause, Square, AlertTriangle, CheckCircle2, Save, Sparkles } from "lucide-react";
+import { Play, Pause, Square, AlertTriangle, CheckCircle2, Save, Sparkles, Clock } from "lucide-react";
 import Button from "@/components/ui/Button";
 
 function toLocalDatetimeInput(dateStr?: string | Date): string {
@@ -243,14 +243,39 @@ export default function AdminEventPage() {
               ดำเนินการต่อ
             </Button>
           ) : (
-            <Button
-              variant="primary"
-              onClick={handleStartEvent}
-              isLoading={saveMutation.isPending || commandMutation.isPending}
-              icon={<Play className="w-4 h-4" />}
-            >
-              เริ่มกิจกรรมทันที
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="primary"
+                onClick={handleStartEvent}
+                isLoading={saveMutation.isPending || commandMutation.isPending}
+                icon={new Date(formData.startsAt) > new Date() ? <Clock className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+              >
+                {new Date(formData.startsAt) > new Date()
+                  ? `⏰ ตั้งเวลาเริ่ม (${new Date(formData.startsAt).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })} น.)`
+                  : "เริ่มกิจกรรมทันที"}
+              </Button>
+
+              {new Date(formData.startsAt) > new Date() && (
+                <Button
+                  variant="secondary"
+                  onClick={async () => {
+                    if (confirm("ต้องการเริ่มกิจกรรมและปล่อยลูกอมทันทีตอนนี้เลย โดยไม่ต้องรอเวลาเริ่มหรือไม่?")) {
+                      const nowInput = toLocalDatetimeInput(new Date());
+                      setFormData({ ...formData, startsAt: nowInput });
+                      await fetch("/api/admin/candy/event", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ type: "EVENT_START", payload: { forceNow: true } }),
+                      });
+                      queryClient.invalidateQueries({ queryKey: ["candy-admin-event"] });
+                    }
+                  }}
+                  icon={<Play className="w-3.5 h-3.5 text-orange-400" />}
+                >
+                  ⚡ บังคับเริ่มตอนนี้
+                </Button>
+              )}
+            </div>
           )}
         </div>
       </div>
@@ -319,8 +344,19 @@ export default function AdminEventPage() {
                 type="datetime-local"
                 value={formData.endsAt}
                 onChange={(e) => setFormData({ ...formData, endsAt: e.target.value })}
-                className="w-full px-3 py-2 bg-neutral-900 border border-white/10 rounded-lg text-xs text-white font-mono"
+                className={`w-full px-3 py-2 bg-neutral-900 border rounded-lg text-xs text-white font-mono ${
+                  new Date(formData.endsAt) <= new Date(formData.startsAt) ? "border-red-500/60" : "border-white/10"
+                }`}
               />
+              {new Date(formData.endsAt) <= new Date(formData.startsAt) ? (
+                <p className="text-[11px] text-red-400 mt-1">
+                  ⚠️ เวลาสิ้นสุดต้องอยู่หลังเวลาเริ่ม (ถ้าต้องการให้จบเที่ยงคืน ต้องเลือกวันถัดไป 12:00 AM ไม่ใช่ 12:00 PM)
+                </p>
+              ) : (
+                <p className="text-[10px] text-neutral-500 mt-1">
+                  💡 ข้อควรระวัง: เที่ยงคืนคือ 12:00 AM (00:00 น. ของวันถัดไป) ส่วน 12:00 PM คือเที่ยงวัน
+                </p>
+              )}
             </div>
           </div>
         </div>

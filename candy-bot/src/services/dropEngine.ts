@@ -34,13 +34,25 @@ class DropEngine {
       const event = await eventService.getActiveEvent();
       if (!event || event.status !== "RUNNING") return;
 
+      const now = Date.now();
+      const startsAtMs = new Date(event.startsAt).getTime();
+      const endsAtMs = new Date(event.endsAt).getTime();
+
+      // Do NOT drop if the event hasn't reached startsAt yet
+      if (now < startsAtMs) {
+        return;
+      }
+
+      // Do NOT drop if the event has passed endsAt
+      if (now >= endsAtMs) {
+        return;
+      }
+
       const config = await eventService.getConfig();
       const dropCfg = config.drop;
 
       const remainingBudget = event.budgetTotal - event.budgetReserved;
       if (remainingBudget <= 0) return;
-
-      const now = Date.now();
 
       // Read Upcoming Drop Queue from DB
       const queueSetting = await prisma.candySetting.findUnique({
