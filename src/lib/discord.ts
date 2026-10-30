@@ -96,6 +96,42 @@ export async function fetchGuildChannels(): Promise<DiscordGuildChannel[]> {
 }
 
 /**
+ * Send Message to a Discord Guild Text Channel via REST API (Instant Drop)
+ */
+export async function sendDiscordChannelMessage(
+  channelId: string,
+  message: { content?: string; embeds?: any[]; components?: any[]; allowed_mentions?: any }
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  const botToken = process.env.DISCORD_BOT_TOKEN || process.env.DISCORD_TOKEN;
+  if (!botToken || !channelId) {
+    return { success: false, error: "Missing botToken or channelId" };
+  }
+
+  try {
+    const res = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bot ${botToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(message),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.warn(`[Discord Send] Error [${res.status}]:`, errText);
+      return { success: false, error: errText };
+    }
+
+    const data = await res.json();
+    return { success: true, messageId: data.id };
+  } catch (err: any) {
+    console.error("Failed to send Discord channel message:", err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
  * Send Direct Message (DM) to a Discord user via Discord Bot REST API
  */
 export async function sendDiscordDirectMessage(

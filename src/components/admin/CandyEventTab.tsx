@@ -112,6 +112,31 @@ export default function CandyEventTab() {
     },
   });
 
+  const instantDropMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/admin/candy/event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "DROP_NOW", payload: { amount: 1, maxClaimers: 1 } }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Failed to drop");
+      }
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["candy-admin-overview"] });
+      queryClient.invalidateQueries({ queryKey: ["candy-admin-event"] });
+      setNotification({ type: "success", text: data.message || "⚡ สั่งดรอปลูกอมทันทีสำเร็จ! (แท็กยศเรียบร้อย)" });
+      setTimeout(() => setNotification(null), 4000);
+    },
+    onError: (err: any) => {
+      setNotification({ type: "error", text: err.message });
+      setTimeout(() => setNotification(null), 4000);
+    },
+  });
+
   const payMutation = useMutation({
     mutationFn: async (id: string) => {
       const res = await fetch("/api/admin/candy/redemptions", {
@@ -240,7 +265,16 @@ export default function CandyEventTab() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant="secondary"
+            onClick={() => instantDropMutation.mutate()}
+            isLoading={instantDropMutation.isPending}
+            icon={<Sparkles className="w-4 h-4 text-orange-400" />}
+          >
+            ⚡ สั่งดรอปทันที 1 ลูก
+          </Button>
+
           {event?.status === "RUNNING" ? (
             <Button
               variant="secondary"

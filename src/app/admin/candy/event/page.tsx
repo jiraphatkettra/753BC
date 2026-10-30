@@ -42,7 +42,7 @@ export default function AdminEventPage() {
     maxClaimers: 1,
   });
 
-  // Sync formData with loaded event from DB
+  // Sync formData with loaded event or saved master settings from DB
   useEffect(() => {
     if (event) {
       const cfg = event.config || {};
@@ -58,8 +58,23 @@ export default function AdminEventPage() {
         lifetimeSec: cfg.drop?.lifetimeSec ?? 45,
         maxClaimers: cfg.drop?.maxClaimers ?? 1,
       });
+    } else if (eventData?.masterConfig) {
+      const mc = eventData.masterConfig;
+      const cfg = mc.config || {};
+      setFormData({
+        name: mc.name || "Trick or Treat 2026",
+        budgetTotal: mc.budgetTotal ?? 1000,
+        startsAt: "2026-10-30T23:30",
+        endsAt: "2026-10-31T00:30",
+        requireVoice: cfg.claim?.requireVoice ?? true,
+        minVoiceSeconds: cfg.claim?.minVoiceSeconds ?? 10,
+        excludeAfkChannel: cfg.claim?.excludeAfkChannel ?? true,
+        perUserMaxTotal: cfg.claim?.perUserMaxTotal ?? "",
+        lifetimeSec: cfg.drop?.lifetimeSec ?? 45,
+        maxClaimers: cfg.drop?.maxClaimers ?? 1,
+      });
     }
-  }, [event]);
+  }, [event, eventData]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -140,11 +155,15 @@ export default function AdminEventPage() {
           },
         }),
       });
-      if (!res.ok) throw new Error("Drop failed");
-      return res.json();
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Drop failed");
+      }
+      return data;
     },
-    onSuccess: () => {
-      setNotification("🍬 สั่งบอทดรอปลูกอมทดสอบ 1 ลูกแล้ว! (แท็กยศเรียบร้อย)");
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["candy-admin-event"] });
+      setNotification(data.message || "🍬 สั่งบอทดรอปลูกอมทันทีสำเร็จ! (แท็กยศเรียบร้อย ไม่ต้องรอคิว)");
       setTimeout(() => setNotification(null), 4000);
     },
     onError: (err: any) => {
@@ -178,7 +197,7 @@ export default function AdminEventPage() {
                 isLoading={manualDropMutation.isPending}
                 icon={<Sparkles className="w-4 h-4 text-orange-400" />}
               >
-                ดรอปทดสอบ 1 ลูก
+                ⚡ สั่งดรอปทันที 1 ลูก
               </Button>
               <Button
                 variant="secondary"
