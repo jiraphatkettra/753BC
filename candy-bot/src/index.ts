@@ -1,3 +1,4 @@
+import http from "http";
 import { client } from "./client";
 import { ENV, validateEnv } from "./env";
 import { embedService } from "./services/embedService";
@@ -16,6 +17,19 @@ async function main() {
   console.log("-----------------------------------------");
 
   validateEnv();
+
+  // Support Render Web Service health checks when PORT is provided
+  if (process.env.PORT) {
+    const port = Number(process.env.PORT) || 10000;
+    http
+      .createServer((_req, res) => {
+        res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
+        res.end("753BC CandyBot is alive and running!");
+      })
+      .listen(port, "0.0.0.0", () => {
+        console.log(`[CandyBot] Render HTTP health check listening on port ${port}`);
+      });
+  }
 
   // 1. Initialize DB Cache & Seed Embeds
   await embedService.init();

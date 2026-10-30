@@ -8,6 +8,7 @@
     "start": "next start -p 3001",
     "lint": "eslint",
     "postinstall": "prisma generate",
+    "candy:bot:build": "npm --prefix candy-shared install && npm --prefix candy-shared run db:generate && npm --prefix candy-bot install",
     "candy:bot": "npm --prefix candy-bot run start",
     "candy:bot:dev": "npm --prefix candy-bot run dev",
     "candy:bot:register": "npm --prefix candy-bot run register"
