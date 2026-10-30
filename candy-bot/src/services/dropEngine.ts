@@ -181,6 +181,13 @@ class DropEngine {
                 dropShortId: drop.id.slice(-6),
               });
               await msg.edit(rendered);
+
+              // Auto-delete expired drop message after 6 seconds
+              setTimeout(async () => {
+                try {
+                  await msg.delete();
+                } catch (e) {}
+              }, 6000);
             }
           }
         } catch (e) {

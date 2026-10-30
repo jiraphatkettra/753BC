@@ -247,6 +247,15 @@ class ClaimService {
             dropShortId: drop.id.slice(-6),
           });
           await msg.edit(rendered);
+
+          // Auto-delete message after 7 seconds to keep chat clean (Option 2)
+          setTimeout(async () => {
+            try {
+              await msg.delete();
+            } catch (err) {
+              // Message might already be deleted or missing permission
+            }
+          }, 7000);
         } else if (drop.status === "ACTIVE") {
           const rendered = embedService.render(
             "candy_drop",
