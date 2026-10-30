@@ -15,7 +15,10 @@ export default function AdminChannelsPage() {
   const { data: discordData, isLoading: isDiscordLoading, refetch: refetchDiscord } = useQuery({
     queryKey: ["candy-discord-channels"],
     queryFn: async () => {
-      const res = await fetch("/api/admin/candy/discord/channels");
+      const res = await fetch("/api/admin/candy/discord/channels", {
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" },
+      });
       if (!res.ok) throw new Error("Failed to load discord channels");
       return res.json();
     },
@@ -25,10 +28,14 @@ export default function AdminChannelsPage() {
   const { data: channelsData, isLoading: isConfigLoading } = useQuery({
     queryKey: ["candy-admin-channels"],
     queryFn: async () => {
-      const res = await fetch("/api/admin/candy/channels");
+      const res = await fetch("/api/admin/candy/channels", {
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" },
+      });
       if (!res.ok) throw new Error("Failed to load event channels");
       return res.json();
     },
+    refetchInterval: 3000,
   });
 
   const discordChannels: any[] = discordData?.channels || [];

@@ -57,11 +57,14 @@ export default function AdminDropsPage() {
   const { data: queueData, isLoading: isQueueLoading, refetch: refetchQueue } = useQuery({
     queryKey: ["candy-admin-drop-queue"],
     queryFn: async () => {
-      const res = await fetch("/api/admin/candy/drops/queue");
+      const res = await fetch("/api/admin/candy/drops/queue", {
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" },
+      });
       if (!res.ok) throw new Error("Failed to load queue");
       return res.json();
     },
-    refetchInterval: 3000,
+    refetchInterval: 2500,
   });
 
   // 2. Fetch Drop History
@@ -69,18 +72,24 @@ export default function AdminDropsPage() {
     queryKey: ["candy-admin-drops", filterStatus],
     queryFn: async () => {
       const url = filterStatus === "all" ? "/api/admin/candy/drops" : `/api/admin/candy/drops?status=${filterStatus}`;
-      const res = await fetch(url);
+      const res = await fetch(url, {
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" },
+      });
       if (!res.ok) throw new Error("Failed to load drops");
       return res.json();
     },
-    refetchInterval: 5000,
+    refetchInterval: 3000,
   });
 
   // 3. Fetch Channels
   const { data: channelsData } = useQuery({
     queryKey: ["candy-admin-channels"],
     queryFn: async () => {
-      const res = await fetch("/api/admin/candy/channels");
+      const res = await fetch("/api/admin/candy/channels", {
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" },
+      });
       if (!res.ok) return { channels: [] };
       return res.json();
     },

@@ -20,10 +20,14 @@ export default function AdminEventPage() {
   const { data: eventData, isLoading } = useQuery({
     queryKey: ["candy-admin-event"],
     queryFn: async () => {
-      const res = await fetch("/api/admin/candy/event");
+      const res = await fetch("/api/admin/candy/event", {
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" },
+      });
       if (!res.ok) throw new Error("Failed to load event");
       return res.json();
     },
+    refetchInterval: 3000,
   });
 
   const event = eventData?.event;

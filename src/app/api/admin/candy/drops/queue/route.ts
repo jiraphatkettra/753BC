@@ -6,6 +6,8 @@ import { renderTemplate } from "@/lib/candy/embeds/render";
 import { sendDiscordChannelMessage } from "@/lib/discord";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 export interface QueuedDropItem {
   id: string;
@@ -123,12 +125,20 @@ export async function GET() {
       secondsRemaining: Math.max(0, Math.ceil((item.scheduledAt - now) / 1000)),
     }));
 
-    return NextResponse.json({
-      success: true,
-      queue: enhancedQueue,
-      eventStatus: event?.status || "NO_EVENT",
-      now,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        queue: enhancedQueue,
+        eventStatus: event?.status || "NO_EVENT",
+        now,
+      },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate",
+          Pragma: "no-cache",
+        },
+      }
+    );
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }

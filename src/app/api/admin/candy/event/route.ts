@@ -7,6 +7,8 @@ import { renderTemplate } from "@/lib/candy/embeds/render";
 import { sendDiscordChannelMessage } from "@/lib/discord";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 export async function GET() {
   try {
@@ -77,12 +79,21 @@ export async function GET() {
       });
     }
 
-    return NextResponse.json({
-      success: true,
-      event,
-      masterConfig: masterConfigSetting?.value || null,
-      masterChannels: savedMasterChannels,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        event,
+        masterConfig: masterConfigSetting?.value || null,
+        masterChannels: savedMasterChannels,
+      },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      }
+    );
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }

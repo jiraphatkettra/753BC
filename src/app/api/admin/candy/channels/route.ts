@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { DEFAULT_EVENT_CONFIG } from "@/lib/candy";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 async function getOrCreateActiveEvent() {
   let event = await prisma.candyEvent.findFirst({
@@ -41,12 +43,20 @@ export async function GET() {
     });
     const savedMasterList = (masterSetting?.value as any[]) || [];
 
-    return NextResponse.json({
-      success: true,
-      channels,
-      savedMasterChannels: savedMasterList,
-      eventId: event.id,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        channels,
+        savedMasterChannels: savedMasterList,
+        eventId: event.id,
+      },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate",
+          Pragma: "no-cache",
+        },
+      }
+    );
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }

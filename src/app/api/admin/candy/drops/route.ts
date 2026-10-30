@@ -6,6 +6,8 @@ import { renderTemplate } from "@/lib/candy/embeds/render";
 import { sendDiscordChannelMessage } from "@/lib/discord";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 export async function GET(req: NextRequest) {
   try {
@@ -19,7 +21,15 @@ export async function GET(req: NextRequest) {
       take: 50,
     });
 
-    return NextResponse.json({ success: true, drops });
+    return NextResponse.json(
+      { success: true, drops },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate",
+          Pragma: "no-cache",
+        },
+      }
+    );
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }

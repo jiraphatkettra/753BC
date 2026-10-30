@@ -38,33 +38,42 @@ export default function CandyEventTab() {
   const { data: overviewData } = useQuery({
     queryKey: ["candy-admin-overview"],
     queryFn: async () => {
-      const res = await fetch("/api/admin/candy/overview");
+      const res = await fetch("/api/admin/candy/overview", {
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" },
+      });
       if (!res.ok) return null;
       return res.json();
     },
-    refetchInterval: 3000,
+    refetchInterval: 2500,
   });
 
   // Event Data
   const { data: eventData } = useQuery({
     queryKey: ["candy-admin-event"],
     queryFn: async () => {
-      const res = await fetch("/api/admin/candy/event");
+      const res = await fetch("/api/admin/candy/event", {
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" },
+      });
       if (!res.ok) return null;
       return res.json();
     },
-    refetchInterval: 5000,
+    refetchInterval: 3000,
   });
 
   // Bot Status
   const { data: botStatus } = useQuery({
     queryKey: ["candy-bot-status"],
     queryFn: async () => {
-      const res = await fetch("/api/admin/candy/bot/status");
+      const res = await fetch("/api/admin/candy/bot/status", {
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" },
+      });
       if (!res.ok) return { online: false };
       return res.json();
     },
-    refetchInterval: 5000,
+    refetchInterval: 3000,
   });
 
   // Redemptions Data

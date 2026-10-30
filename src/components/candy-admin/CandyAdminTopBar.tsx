@@ -13,21 +13,27 @@ export default function CandyAdminTopBar() {
   const { data: botStatus } = useQuery({
     queryKey: ["candy-bot-status"],
     queryFn: async () => {
-      const res = await fetch("/api/admin/candy/bot/status");
+      const res = await fetch("/api/admin/candy/bot/status", {
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" },
+      });
       if (!res.ok) return { online: false };
       return res.json();
     },
-    refetchInterval: 5000,
+    refetchInterval: 3000,
   });
 
   const { data: eventData } = useQuery({
     queryKey: ["candy-admin-event"],
     queryFn: async () => {
-      const res = await fetch("/api/admin/candy/event");
+      const res = await fetch("/api/admin/candy/event", {
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" },
+      });
       if (!res.ok) return null;
       return res.json();
     },
-    refetchInterval: 10000,
+    refetchInterval: 3000,
   });
 
   const isBotOnline = Boolean(botStatus?.online && Date.now() - (botStatus?.timestamp || 0) < 30000);

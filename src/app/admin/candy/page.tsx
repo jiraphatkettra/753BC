@@ -10,11 +10,14 @@ export default function AdminOverviewPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["candy-admin-overview"],
     queryFn: async () => {
-      const res = await fetch("/api/admin/candy/overview");
+      const res = await fetch("/api/admin/candy/overview", {
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" },
+      });
       if (!res.ok) throw new Error("Failed to load overview");
       return res.json();
     },
-    refetchInterval: 3000,
+    refetchInterval: 2500,
   });
 
   const stats = data?.stats || {
@@ -133,7 +136,7 @@ export default function AdminOverviewPage() {
               data?.recentClaims?.map((c: any) => (
                 <div key={c.id} className="p-2.5 rounded-lg bg-neutral-900 border border-white/5 flex items-center justify-between text-xs">
                   <div>
-                    <span className="font-semibold text-white">ผู้ใช้ {c.discordId}</span>
+                    <span className="font-semibold text-white">{c.userName || `ผู้ใช้ ${c.discordId}`}</span>
                     <span className="text-[11px] text-neutral-400 ml-2">อยู่ในเสียง {c.voiceSeconds}s</span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -162,7 +165,7 @@ export default function AdminOverviewPage() {
                 <div key={d.id} className="p-2.5 rounded-lg bg-neutral-900 border border-white/5 flex items-center justify-between text-xs">
                   <div>
                     <span className="font-semibold text-white">ดรอป {d.amount} ลูก</span>
-                    <span className="text-[11px] text-neutral-400 ml-2">ห้อง {d.channelId}</span>
+                    <span className="text-[11px] text-neutral-400 ml-2">#{d.channelName || d.channelId}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-semibold ${d.status === "ACTIVE" ? "bg-orange-500/20 text-orange-400" : d.status === "CLAIMED" ? "bg-emerald-500/20 text-emerald-400" : "bg-neutral-800 text-neutral-400"}`}>
