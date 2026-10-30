@@ -139,6 +139,15 @@ export default function AdminEventPage() {
     },
   });
 
+  const handleStartEvent = async () => {
+    try {
+      await saveMutation.mutateAsync();
+      await commandMutation.mutateAsync("EVENT_START");
+    } catch (e: any) {
+      alert(`ไม่สามารถเริ่มกิจกรรมได้: ${e.message}`);
+    }
+  };
+
   // Quick manual drop test
   const manualDropMutation = useMutation({
     mutationFn: async () => {
@@ -236,8 +245,8 @@ export default function AdminEventPage() {
           ) : (
             <Button
               variant="primary"
-              onClick={() => commandMutation.mutate("EVENT_START")}
-              isLoading={commandMutation.isPending}
+              onClick={handleStartEvent}
+              isLoading={saveMutation.isPending || commandMutation.isPending}
               icon={<Play className="w-4 h-4" />}
             >
               เริ่มกิจกรรมทันที
