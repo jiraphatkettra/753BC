@@ -1,0 +1,12 @@
+import { Client, GatewayIntentBits, Partials } from "discord.js";
+
+export const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildVoiceStates,
+    GatewayIntentBits.GuildMembers,
+  ],
+  partials: [Partials.Channel, Partials.Message, Partials.User, Partials.GuildMember],
+});
+

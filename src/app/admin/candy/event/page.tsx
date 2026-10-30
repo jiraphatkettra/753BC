@@ -1,0 +1,314 @@
+"use client";
+
+import React, { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Play, Pause, Square, AlertTriangle, CheckCircle2, Save } from "lucide-react";
+import Button from "@/components/ui/Button";
+
+export default function AdminEventPage() {
+  const queryClient = useQueryClient();
+  const [notification, setNotification] = useState<string | null>(null);
+
+  const { data: eventData, isLoading } = useQuery({
+    queryKey: ["candy-admin-event"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/candy/event");
+      if (!res.ok) throw new Error("Failed to load event");
+      return res.json();
+    },
+  });
+
+  const event = eventData?.event;
+  const config = event?.config || {};
+
+  const [formData, setFormData] = useState<any>({
+    name: event?.name || "Trick or Treat 2026",
+    budgetTotal: event?.budgetTotal || 1000,
+    startsAt: event?.startsAt ? new Date(event.startsAt).toISOString().slice(0, 16) : "2026-10-30T23:30",
+    endsAt: event?.endsAt ? new Date(event.endsAt).toISOString().slice(0, 16) : "2026-10-31T00:30",
+    requireVoice: config.claim?.requireVoice ?? true,
+    minVoiceSeconds: config.claim?.minVoiceSeconds ?? 10,
+    excludeAfkChannel: config.claim?.excludeAfkChannel ?? true,
+    perUserMaxTotal: config.claim?.perUserMaxTotal || "",
+    lifetimeSec: config.drop?.lifetimeSec ?? 45,
+    maxClaimers: config.drop?.maxClaimers ?? 1,
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/admin/candy/event", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: formData.name,
+          budgetTotal: parseInt(formData.budgetTotal, 10),
+          startsAt: new Date(formData.startsAt).toISOString(),
+          endsAt: new Date(formData.endsAt).toISOString(),
+          config: {
+            ...config,
+            drop: {
+              ...config.drop,
+              lifetimeSec: parseInt(formData.lifetimeSec, 10),
+              maxClaimers: parseInt(formData.maxClaimers, 10),
+            },
+            claim: {
+              ...config.claim,
+              requireVoice: Boolean(formData.requireVoice),
+              minVoiceSeconds: parseInt(formData.minVoiceSeconds, 10),
+              excludeAfkChannel: Boolean(formData.excludeAfkChannel),
+              perUserMaxTotal: formData.perUserMaxTotal ? parseInt(formData.perUserMaxTotal, 10) : null,
+            },
+          },
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to save event");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["candy-admin-event"] });
+      setNotification("✅ บันทึกการตั้งค่ากิจกรรมสำเร็จ!");
+      setTimeout(() => setNotification(null), 3000);
+    },
+  });
+
+  const commandMutation = useMutation({
+    mutationFn: async (type: "EVENT_START" | "EVENT_PAUSE" | "EVENT_RESUME" | "EVENT_END") => {
+      const res = await fetch("/api/admin/candy/event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type }),
+      });
+      if (!res.ok) throw new Error("Command failed");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["candy-admin-event"] });
+      setNotification("คำสั่งถูกส่งไปยังคิวของบอทเรียบร้อยแล้ว");
+      setTimeout(() => setNotification(null), 3000);
+    },
+  });
+
+  const preflightChecks = [
+    { label: "งบประมาณรวม > 0", pass: (event?.budgetTotal || formData.budgetTotal) > 0 },
+    { label: "มีห้องข้อความสำหรับดรอปอย่างน้อย 1 ห้อง", pass: (event?.channels || []).filter((c: any) => c.enabled).length > 0 },
+    { label: "ระบบตรวจจับห้องเสียงเปิดใช้งาน", pass: Boolean(formData.requireVoice) },
+  ];
+
+  return (
+    <div className="space-y-6 max-w-4xl">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">ตั้งค่า & ควบคุมกิจกรรม</h1>
+          <p className="text-xs text-neutral-400 mt-1">กำหนดงบประมาณ เงื่อนไขห้องเสียง และควบคุมการเริ่ม/หยุดกิจกรรม</p>
+        </div>
+
+        {/* Controls */}
+        <div className="flex items-center gap-2">
+          {event?.status === "RUNNING" ? (
+            <>
+              <Button
+                variant="secondary"
+                onClick={() => commandMutation.mutate("EVENT_PAUSE")}
+                isLoading={commandMutation.isPending}
+                icon={<Pause className="w-4 h-4" />}
+              >
+                พักกิจกรรม
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  if (confirm("ยืนยันสิ้นสุดกิจกรรมทันที?")) {
+                    commandMutation.mutate("EVENT_END");
+                  }
+                }}
+                isLoading={commandMutation.isPending}
+                icon={<Square className="w-4 h-4" />}
+              >
+                จบกิจกรรม
+              </Button>
+            </>
+          ) : event?.status === "PAUSED" ? (
+            <Button
+              variant="primary"
+              onClick={() => commandMutation.mutate("EVENT_RESUME")}
+              isLoading={commandMutation.isPending}
+              icon={<Play className="w-4 h-4" />}
+            >
+              ดำเนินการต่อ
+            </Button>
+          ) : (
+            <Button
+              variant="primary"
+              onClick={() => commandMutation.mutate("EVENT_START")}
+              isLoading={commandMutation.isPending}
+              icon={<Play className="w-4 h-4" />}
+            >
+              เริ่มกิจกรรมทันที
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {notification && (
+        <div className="p-3 bg-emerald-950/50 border border-emerald-500/30 rounded-lg text-xs text-emerald-300 font-medium">
+          {notification}
+        </div>
+      )}
+
+      {/* Pre-flight checklist */}
+      <div className="p-4 rounded-xl bg-neutral-950/70 border border-white/10 space-y-2">
+        <h2 className="text-xs font-bold text-white uppercase tracking-wider mb-2">Pre-flight Checklist (ความพร้อมก่อนเริ่ม)</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+          {preflightChecks.map((chk, i) => (
+            <div key={i} className="flex items-center gap-2 p-2 rounded bg-neutral-900 border border-white/5">
+              {chk.pass ? (
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+              ) : (
+                <AlertTriangle className="w-4 h-4 text-orange-400 flex-shrink-0" />
+              )}
+              <span className={chk.pass ? "text-neutral-200" : "text-orange-300"}>{chk.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Form Settings */}
+      <div className="p-6 rounded-xl bg-neutral-950/70 border border-white/10 space-y-6">
+        {/* Section 1: Event General */}
+        <div className="space-y-4">
+          <h2 className="text-xs font-bold text-white uppercase tracking-wider border-b border-white/10 pb-2">
+            ข้อมูลทั่วไปและงบประมาณ
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-semibold text-neutral-300 block mb-1">ชื่องานกิจกรรม</label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="w-full px-3 py-2 bg-neutral-900 border border-white/10 rounded-lg text-xs text-white"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-neutral-300 block mb-1">งบประมาณรวม (บาท / ลูกอม)</label>
+              <input
+                type="number"
+                value={formData.budgetTotal}
+                onChange={(e) => setFormData({ ...formData, budgetTotal: e.target.value })}
+                className="w-full px-3 py-2 bg-neutral-900 border border-white/10 rounded-lg text-xs text-white font-mono"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-neutral-300 block mb-1">เวลาเริ่ม (Asia/Bangkok)</label>
+              <input
+                type="datetime-local"
+                value={formData.startsAt}
+                onChange={(e) => setFormData({ ...formData, startsAt: e.target.value })}
+                className="w-full px-3 py-2 bg-neutral-900 border border-white/10 rounded-lg text-xs text-white font-mono"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-neutral-300 block mb-1">เวลาสิ้นสุด (Asia/Bangkok)</label>
+              <input
+                type="datetime-local"
+                value={formData.endsAt}
+                onChange={(e) => setFormData({ ...formData, endsAt: e.target.value })}
+                className="w-full px-3 py-2 bg-neutral-900 border border-white/10 rounded-lg text-xs text-white font-mono"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Section 2: Voice Rules */}
+        <div className="space-y-4 pt-4 border-t border-white/10">
+          <h2 className="text-xs font-bold text-white uppercase tracking-wider border-b border-white/10 pb-2">
+            กติกาห้องพูดคุยเสียง (Voice Rules)
+          </h2>
+          <div className="space-y-3">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.requireVoice}
+                onChange={(e) => setFormData({ ...formData, requireVoice: e.target.checked })}
+                className="w-4 h-4 rounded bg-neutral-900 border-white/20 text-orange-500 focus:ring-0"
+              />
+              <div>
+                <div className="text-xs font-semibold text-white">ต้องอยู่ในห้องพูดคุยเสียงเท่านั้นถึงจะเก็บได้ (กติกาหลัก)</div>
+                <div className="text-[11px] text-neutral-400">บอทจะตรวจสอบสถานะ Voice State ก่อนอนุมัติการเคลมทุกครั้ง</div>
+              </div>
+            </label>
+
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.excludeAfkChannel}
+                onChange={(e) => setFormData({ ...formData, excludeAfkChannel: e.target.checked })}
+                className="w-4 h-4 rounded bg-neutral-900 border-white/20 text-orange-500 focus:ring-0"
+              />
+              <div>
+                <div className="text-xs font-semibold text-white">ยกเว้นห้อง AFK (ไม่อนุญาตให้รับลูกอมในห้อง AFK)</div>
+                <div className="text-[11px] text-neutral-400">ป้องกันการเปิดไมค์ทิ้งไว้ในห้องที่ไม่ได้ร่วมพูดคุย</div>
+              </div>
+            </label>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+              <div>
+                <label className="text-xs font-semibold text-neutral-300 block mb-1">ต้องอยู่ในห้องเสียงก่อนอย่างน้อย (วินาที)</label>
+                <input
+                  type="number"
+                  value={formData.minVoiceSeconds}
+                  onChange={(e) => setFormData({ ...formData, minVoiceSeconds: e.target.value })}
+                  className="w-full px-3 py-2 bg-neutral-900 border border-white/10 rounded-lg text-xs text-white font-mono"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-neutral-300 block mb-1">เพดานสะสมสูงสุดต่อคน (เว้นว่างได้)</label>
+                <input
+                  type="number"
+                  value={formData.perUserMaxTotal}
+                  onChange={(e) => setFormData({ ...formData, perUserMaxTotal: e.target.value })}
+                  placeholder="เช่น 100"
+                  className="w-full px-3 py-2 bg-neutral-900 border border-white/10 rounded-lg text-xs text-white font-mono"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Section 3: Drop Lifetimes */}
+        <div className="space-y-4 pt-4 border-t border-white/10">
+          <h2 className="text-xs font-bold text-white uppercase tracking-wider border-b border-white/10 pb-2">
+            การดรอปลูกอม (Drop Parameters)
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-semibold text-neutral-300 block mb-1">อายุดรอปในห้องข้อความ (วินาที)</label>
+              <input
+                type="number"
+                value={formData.lifetimeSec}
+                onChange={(e) => setFormData({ ...formData, lifetimeSec: e.target.value })}
+                className="w-full px-3 py-2 bg-neutral-900 border border-white/10 rounded-lg text-xs text-white font-mono"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-neutral-300 block mb-1">จำนวนคนเก็บต่อดรอป (Max Claimers)</label>
+              <input
+                type="number"
+                value={formData.maxClaimers}
+                onChange={(e) => setFormData({ ...formData, maxClaimers: e.target.value })}
+                className="w-full px-3 py-2 bg-neutral-900 border border-white/10 rounded-lg text-xs text-white font-mono"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Submit */}
+        <div className="pt-4 border-t border-white/10 flex justify-end">
+          <Button variant="primary" onClick={() => saveMutation.mutate()} isLoading={saveMutation.isPending} icon={<Save className="w-4 h-4" />}>
+            บันทึกการตั้งค่าทั้งหมด
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}

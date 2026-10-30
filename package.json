@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start -p 3001",
     "lint": "eslint",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "candy:bot": "npm --prefix candy-bot run start",
+    "candy:bot:dev": "npm --prefix candy-bot run dev",
+    "candy:bot:register": "npm --prefix candy-bot run register"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",

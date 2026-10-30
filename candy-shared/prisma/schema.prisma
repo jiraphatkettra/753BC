@@ -1,0 +1,286 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/client"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum CandyEventStatus {
+  DRAFT
+  SCHEDULED
+  RUNNING
+  PAUSED
+  ENDED
+}
+
+enum CandyDropStatus {
+  ACTIVE
+  CLAIMED
+  EXPIRED
+  CANCELLED
+}
+
+enum CandyDropSource {
+  SCHEDULER
+  ADMIN
+}
+
+enum CandyLedgerType {
+  DROP_CLAIM
+  ADMIN_GIVE
+  ADMIN_TAKE
+  REDEEM_HOLD
+  REDEEM_REFUND
+}
+
+enum CandyRedeemStatus {
+  PENDING
+  APPROVED
+  PAID
+  REJECTED
+  CANCELLED
+}
+
+enum CandyCommandStatus {
+  PENDING
+  PROCESSING
+  DONE
+  FAILED
+}
+
+/// กิจกรรม 1 รอบ (มี RUNNING/PAUSED ได้ทีละ 1 — บังคับด้วย partial unique index ใน SQL)
+model CandyEvent {
+  id             String           @id @default(cuid())
+  name           String
+  status         CandyEventStatus @default(DRAFT)
+  startsAt       DateTime
+  endsAt         DateTime
+  budgetTotal    Int              @default(0) // เพดานลูกอมที่แจกได้ทั้งหมด
+  budgetReserved Int              @default(0) // จองไว้ใน drop ที่ยัง ACTIVE + ที่ถูกเก็บแล้ว
+  budgetClaimed  Int              @default(0) // ถูกเก็บจริง
+  config         Json // EventConfig (§5)
+  configVersion  Int              @default(1)
+  createdBy      String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  channels CandyChannel[]
+  drops    CandyDrop[]
+  claims   CandyClaim[]
+
+  @@index([status])
+  @@map("candy_events")
+}
+
+/// ห้องข้อความที่อนุญาตให้ดรอป
+model CandyChannel {
+  id        String   @id @default(cuid())
+  eventId   String
+  channelId String // Discord text channel id
+  name      String? // cache ชื่อห้อง
+  enabled   Boolean  @default(true)
+  weight    Int      @default(1) // น้ำหนักสุ่ม (คูณกับ activity)
+  createdAt DateTime @default(now())
+
+  event CandyEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, channelId])
+  @@map("candy_channels")
+}
+
+model CandyDrop {
+  id           String          @id @default(cuid())
+  eventId      String
+  channelId    String
+  messageId    String?
+  amount       Int // ลูกอมต่อผู้เก็บ 1 คน
+  maxClaimers  Int             @default(1)
+  claimedCount Int             @default(0)
+  status       CandyDropStatus @default(ACTIVE)
+  source       CandyDropSource @default(SCHEDULER)
+  createdBy    String? // discordId ถ้า ADMIN
+  expiresAt    DateTime
+  closedAt     DateTime?
+  createdAt    DateTime        @default(now())
+
+  event  CandyEvent   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  claims CandyClaim[]
+
+  @@index([eventId, status])
+  @@index([status, expiresAt])
+  @@map("candy_drops")
+}
+
+model CandyClaim {
+  id             String   @id @default(cuid())
+  dropId         String
+  eventId        String
+  discordId      String
+  amount         Int
+  voiceChannelId String
+  voiceSeconds   Int // อยู่ในห้องเสียงมานานเท่าไรตอนกด
+  latencyMs      Int? // เวลาจาก drop → กด (ไว้ตรวจ bot/macro)
+  createdAt      DateTime @default(now())
+
+  drop  CandyDrop  @relation(fields: [dropId], references: [id], onDelete: Cascade)
+  event CandyEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([dropId, discordId])
+  @@index([eventId, discordId])
+  @@index([createdAt])
+  @@map("candy_claims")
+}
+
+/// กระเป๋าลูกอมต่อคน (แยกจาก balance เงินของ LynnBot)
+model CandyWallet {
+  id            String    @id @default(cuid())
+  discordId     String    @unique
+  username      String?
+  displayName   String?
+  avatar        String?
+  balance       Int       @default(0) // ใช้แลกได้
+  totalEarned   Int       @default(0)
+  totalRedeemed Int       @default(0)
+  claimCount    Int       @default(0)
+  blocked       Boolean   @default(false)
+  blockReason   String?
+  lastClaimAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([totalEarned])
+  @@map("candy_wallets")
+}
+
+/// บัญชีแยกประเภท: ทุกการเปลี่ยนยอดต้องมี 1 แถว (append-only)
+model CandyLedger {
+  id           String          @id @default(cuid())
+  discordId    String
+  delta        Int // + / -
+  balanceAfter Int
+  type         CandyLedgerType
+  refType      String? // "drop" | "redemption" | "admin"
+  refId        String?
+  reason       String?
+  actor        String? // discordId ผู้ทำ (admin) หรือ "system"
+  createdAt    DateTime        @default(now())
+
+  @@index([discordId, createdAt])
+  @@index([refType, refId])
+  @@map("candy_ledger")
+}
+
+model CandyRedemption {
+  id           String            @id @default(cuid())
+  discordId    String
+  amount       Int // จำนวนลูกอมที่ขอแลก
+  bahtAmount   Int // amount × bahtPerCandy ณ ตอนขอ
+  payoutMethod String            @default("PROMPTPAY")
+  payoutTarget String // เบอร์พร้อมเพย์/บัญชี
+  accountName  String?
+  status       CandyRedeemStatus @default(PENDING)
+  rejectReason String?
+  slipUrl      String?
+  note         String?
+  reviewedBy   String?
+  reviewedAt   DateTime?
+  paidAt       DateTime?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@index([discordId])
+  @@index([status, createdAt])
+  @@map("candy_redemptions")
+}
+
+/// Embed Template — 1 แถวต่อ 1 key (ดู §7)
+model CandyEmbedTemplate {
+  key       String   @id // เช่น "candy_drop"
+  name      String
+  category  String // drop | claim | error | panel | info | redeem | announce | admin
+  enabled   Boolean  @default(true)
+  payload   Json // EmbedTemplatePayload ที่ Publish แล้ว (บอทอ่านตัวนี้)
+  draft     Json? // ฉบับร่างที่ยังไม่ Publish
+  version   Int      @default(1)
+  isDefault Boolean  @default(true) // true = ยังเป็นค่าเริ่มต้นจากโค้ด
+  updatedBy String?
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  revisions CandyEmbedRevision[]
+
+  @@index([category])
+  @@map("candy_embed_templates")
+}
+
+model CandyEmbedRevision {
+  id        String   @id @default(cuid())
+  key       String
+  version   Int
+  payload   Json
+  note      String?
+  createdBy String?
+  createdAt DateTime @default(now())
+
+  template CandyEmbedTemplate @relation(fields: [key], references: [key], onDelete: Cascade)
+
+  @@unique([key, version])
+  @@map("candy_embed_revisions")
+}
+
+/// ข้อความ panel ที่เว็บ/บอทโพสต์ไว้ (เพื่อแก้ไขข้อความเดิมได้)
+model CandyPostedMessage {
+  id          String   @id @default(cuid())
+  templateKey String
+  channelId   String
+  messageId   String
+  createdBy   String?
+  createdAt   DateTime @default(now())
+
+  @@unique([channelId, messageId])
+  @@index([templateKey])
+  @@map("candy_posted_messages")
+}
+
+/// คิวคำสั่ง Web → Bot
+model CandyCommand {
+  id        String             @id @default(cuid())
+  type      String // EVENT_START | EVENT_PAUSE | EVENT_RESUME | EVENT_END | DROP_NOW | DROP_CANCEL | POST_TEMPLATE | EDIT_POSTED | RELOAD | TEST_SEND
+  payload   Json
+  status    CandyCommandStatus @default(PENDING)
+  result    Json?
+  error     String?
+  createdBy String?
+  createdAt DateTime           @default(now())
+  doneAt    DateTime?
+
+  @@index([status, createdAt])
+  @@map("candy_commands")
+}
+
+/// key-value เล็ก ๆ (redeemOpen, bahtPerCandy, redeemInfoText, bot:heartbeat ...)
+model CandySetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+
+  @@map("candy_settings")
+}
+
+model CandyAuditLog {
+  id        String   @id @default(cuid())
+  actor     String
+  action    String // เช่น "wallet.adjust", "embed.publish"
+  target    String?
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([actor])
+  @@map("candy_audit_logs")
+}
+

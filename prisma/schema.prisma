@@ -163,3 +163,272 @@ model Setting {
   @@map("settings")
 }
 
+// ================= 753BC Trick or Treat Candy Event =================
+enum CandyEventStatus {
+  DRAFT
+  SCHEDULED
+  RUNNING
+  PAUSED
+  ENDED
+}
+
+enum CandyDropStatus {
+  ACTIVE
+  CLAIMED
+  EXPIRED
+  CANCELLED
+}
+
+enum CandyDropSource {
+  SCHEDULER
+  ADMIN
+}
+
+enum CandyLedgerType {
+  DROP_CLAIM
+  ADMIN_GIVE
+  ADMIN_TAKE
+  REDEEM_HOLD
+  REDEEM_REFUND
+}
+
+enum CandyRedeemStatus {
+  PENDING
+  APPROVED
+  PAID
+  REJECTED
+  CANCELLED
+}
+
+enum CandyCommandStatus {
+  PENDING
+  PROCESSING
+  DONE
+  FAILED
+}
+
+model CandyEvent {
+  id             String           @id @default(cuid())
+  name           String
+  status         CandyEventStatus @default(DRAFT)
+  startsAt       DateTime
+  endsAt         DateTime
+  budgetTotal    Int              @default(0)
+  budgetReserved Int              @default(0)
+  budgetClaimed  Int              @default(0)
+  config         Json
+  configVersion  Int              @default(1)
+  createdBy      String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  channels CandyChannel[]
+  drops    CandyDrop[]
+  claims   CandyClaim[]
+
+  @@index([status])
+  @@map("candy_events")
+}
+
+model CandyChannel {
+  id        String   @id @default(cuid())
+  eventId   String
+  channelId String
+  name      String?
+  enabled   Boolean  @default(true)
+  weight    Int      @default(1)
+  createdAt DateTime @default(now())
+
+  event CandyEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, channelId])
+  @@map("candy_channels")
+}
+
+model CandyDrop {
+  id           String          @id @default(cuid())
+  eventId      String
+  channelId    String
+  messageId    String?
+  amount       Int
+  maxClaimers  Int             @default(1)
+  claimedCount Int             @default(0)
+  status       CandyDropStatus @default(ACTIVE)
+  source       CandyDropSource @default(SCHEDULER)
+  createdBy    String?
+  expiresAt    DateTime
+  closedAt     DateTime?
+  createdAt    DateTime        @default(now())
+
+  event  CandyEvent   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  claims CandyClaim[]
+
+  @@index([eventId, status])
+  @@index([status, expiresAt])
+  @@map("candy_drops")
+}
+
+model CandyClaim {
+  id             String   @id @default(cuid())
+  dropId         String
+  eventId        String
+  discordId      String
+  amount         Int
+  voiceChannelId String
+  voiceSeconds   Int
+  latencyMs      Int?
+  createdAt      DateTime @default(now())
+
+  drop  CandyDrop  @relation(fields: [dropId], references: [id], onDelete: Cascade)
+  event CandyEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([dropId, discordId])
+  @@index([eventId, discordId])
+  @@index([createdAt])
+  @@map("candy_claims")
+}
+
+model CandyWallet {
+  id            String    @id @default(cuid())
+  discordId     String    @unique
+  username      String?
+  displayName   String?
+  avatar        String?
+  balance       Int       @default(0)
+  totalEarned   Int       @default(0)
+  totalRedeemed Int       @default(0)
+  claimCount    Int       @default(0)
+  blocked       Boolean   @default(false)
+  blockReason   String?
+  lastClaimAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([totalEarned])
+  @@map("candy_wallets")
+}
+
+model CandyLedger {
+  id           String          @id @default(cuid())
+  discordId    String
+  delta        Int
+  balanceAfter Int
+  type         CandyLedgerType
+  refType      String?
+  refId        String?
+  reason       String?
+  actor        String?
+  createdAt    DateTime        @default(now())
+
+  @@index([discordId, createdAt])
+  @@index([refType, refId])
+  @@map("candy_ledger")
+}
+
+model CandyRedemption {
+  id           String            @id @default(cuid())
+  discordId    String
+  amount       Int
+  bahtAmount   Int
+  payoutMethod String            @default("PROMPTPAY")
+  payoutTarget String
+  accountName  String?
+  status       CandyRedeemStatus @default(PENDING)
+  rejectReason String?
+  slipUrl      String?
+  note         String?
+  reviewedBy   String?
+  reviewedAt   DateTime?
+  paidAt       DateTime?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@index([discordId])
+  @@index([status, createdAt])
+  @@map("candy_redemptions")
+}
+
+model CandyEmbedTemplate {
+  key       String   @id
+  name      String
+  category  String
+  enabled   Boolean  @default(true)
+  payload   Json
+  draft     Json?
+  version   Int      @default(1)
+  isDefault Boolean  @default(true)
+  updatedBy String?
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  revisions CandyEmbedRevision[]
+
+  @@index([category])
+  @@map("candy_embed_templates")
+}
+
+model CandyEmbedRevision {
+  id        String   @id @default(cuid())
+  key       String
+  version   Int
+  payload   Json
+  note      String?
+  createdBy String?
+  createdAt DateTime @default(now())
+
+  template CandyEmbedTemplate @relation(fields: [key], references: [key], onDelete: Cascade)
+
+  @@unique([key, version])
+  @@map("candy_embed_revisions")
+}
+
+model CandyPostedMessage {
+  id          String   @id @default(cuid())
+  templateKey String
+  channelId   String
+  messageId   String
+  createdBy   String?
+  createdAt   DateTime @default(now())
+
+  @@unique([channelId, messageId])
+  @@index([templateKey])
+  @@map("candy_posted_messages")
+}
+
+model CandyCommand {
+  id        String             @id @default(cuid())
+  type      String
+  payload   Json
+  status    CandyCommandStatus @default(PENDING)
+  result    Json?
+  error     String?
+  createdBy String?
+  createdAt DateTime           @default(now())
+  doneAt    DateTime?
+
+  @@index([status, createdAt])
+  @@map("candy_commands")
+}
+
+model CandySetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+
+  @@map("candy_settings")
+}
+
+model CandyAuditLog {
+  id        String   @id @default(cuid())
+  actor     String
+  action    String
+  target    String?
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([actor])
+  @@map("candy_audit_logs")
+}
+
+
