@@ -36,7 +36,6 @@ import Button from "@/components/ui/Button";
 import { generatePromptPayPayload, generatePromptPayQrSvg } from "@/lib/promptpay";
 import VoiceManagerTab from "@/components/admin/VoiceManagerTab";
 import EmbedStudioTab from "@/components/admin/EmbedStudioTab";
-import CandyEventTab from "@/components/admin/CandyEventTab";
 
 const ADMIN_TABS: TabItem[] = [
   { id: "overview", label: "01 // OVERVIEW", subText: "ภาพรวม" },
@@ -46,7 +45,6 @@ const ADMIN_TABS: TabItem[] = [
   { id: "voice", label: "05 // VOICE_HOURS", subText: "ชั่วโมงเสียง" },
   { id: "embed_studio", label: "06 // EMBED_STUDIO", subText: "แก้ไข Embed" },
   { id: "bank_config", label: "07 // BANK_CONFIG", subText: "เลขบัญชี" },
-  { id: "candy_event", label: "08 // CANDY_EVENT", subText: "Trick or Treat" },
 ];
 
 export default function AdminClient() {
@@ -1268,11 +1266,6 @@ export default function AdminClient() {
           </div>
         </div>
       )}
-
-      {/* ============================================================== */}
-      {/* ── TAB 8: HALLOWEEN CANDY EVENT ── */}
-      {/* ============================================================== */}
-      {activeTab === "candy_event" && <CandyEventTab />}
 
       {/* ── Bottom Section Strip ── */}
       <BottomSectionStrip figLabel="FIG_99 // ADMIN_CORE" statusText="SYSTEM_READY" />

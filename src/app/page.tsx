@@ -3,7 +3,6 @@ import Link from "next/link";
 import { ArrowUpRight, Trophy, Calendar, Sparkles, Clock, Flame, ChevronRight, Shield, Bot, Wallet, ShoppingBag } from "lucide-react";
 import HeroEventSlider from "@/components/home/HeroEventSlider";
 import HeroHeadline from "@/components/home/HeroHeadline";
-import CandyEventHeroSection from "@/components/home/CandyEventHeroSection";
 import { COMMUNITY_EVENTS } from "@/config/events";
 import RuleAssistantWidget from "@/components/rules/RuleAssistantWidget";
 import { auth } from "@/lib/auth";
@@ -322,9 +321,6 @@ export default async function Home() {
 
         </div>
       </section>
-
-      {/* ================= Halloween Candy Event Spotlight Hero Section ================= */}
-      <CandyEventHeroSection />
 
       {/* ================= Featured Events Section ================= */}
       <section className="relative w-full flex justify-center mt-12 sm:mt-16 md:mt-20">

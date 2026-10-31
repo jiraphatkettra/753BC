@@ -31,7 +31,7 @@ const eventSlides = [
     badge: "EVENT 02",
     tag: "TRICK OR TREAT",
     period: "31 OCT // MIDNIGHT",
-    href: "/candy",
+    href: "/events#trick-or-treat-candy-to-money",
   },
 ];
 
